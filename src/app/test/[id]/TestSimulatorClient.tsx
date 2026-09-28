@@ -14,8 +14,6 @@ import {
   UserSettings,
 } from '@/lib/storage';
 import { soundController } from '@/lib/sound';
-import { ArrowLeft, BookOpen, AlertCircle } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 interface TestSimulatorClientProps {
@@ -44,6 +42,11 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
   // Timing references
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const deadlineTimeRef = useRef<number | null>(null);
+  const typedTextRef = useRef('');
+  const backspaceCountRef = useRef(0);
+  const hasStartedRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
 
   useEffect(() => {
     const all = getAllPassages();
@@ -62,30 +65,39 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
     } else {
       document.documentElement.classList.remove('dark');
     }
+    window.localStorage.setItem('cbtst-theme', stored.darkMode ? 'dark' : 'light');
   }, [passageId]);
+
+  useEffect(() => () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+  }, []);
 
   // Start timer on first keystroke
   const handleStartTest = () => {
-    if (isTestActive || isTestCompleted) return;
+    if (hasStartedRef.current || hasSubmittedRef.current) return;
+    hasStartedRef.current = true;
     setIsTestActive(true);
     startTimeRef.current = Date.now();
+    deadlineTimeRef.current = startTimeRef.current + selectedDuration * 60 * 1000;
 
     timerIntervalRef.current = setInterval(() => {
-      setTimeLeftSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current!);
-          finishTest();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      const remaining = Math.max(0, Math.ceil(((deadlineTimeRef.current ?? Date.now()) - Date.now()) / 1000));
+      setTimeLeftSeconds(remaining);
+      if (remaining === 0) {
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+        finishTest();
+      }
+    }, 250);
   };
 
   // Submit & evaluate test
   const finishTest = () => {
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
     setIsTestActive(false);
     setIsTestCompleted(true);
@@ -99,10 +111,10 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
 
     const evalResult = evaluateTypingTest({
       originalPassage: passage.text,
-      typedText,
+      typedText: typedTextRef.current,
       testDurationMinutes: selectedDuration,
       elapsedMilliseconds: elapsed,
-      backspaceCount,
+      backspaceCount: backspaceCountRef.current,
     });
 
     setEvaluationResult(evalResult);
@@ -111,7 +123,6 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
     saveTestAttempt({
       passageId: passage.id,
       passageTitle: passage.title,
-      passageCategory: passage.category,
       durationMinutes: selectedDuration,
       backspaceEnabled: settings.backspaceEnabled,
       result: evalResult,
@@ -133,14 +144,30 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
   const resetTestState = () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
     setIsTestActive(false);
     setIsTestCompleted(false);
     setEvaluationResult(null);
+    hasStartedRef.current = false;
+    hasSubmittedRef.current = false;
+    typedTextRef.current = '';
+    backspaceCountRef.current = 0;
+    deadlineTimeRef.current = null;
     setTypedText('');
     setBackspaceCount(0);
     setTimeLeftSeconds(selectedDuration * 60);
     startTimeRef.current = null;
+  };
+
+  const handleTypedTextChange = (value: string) => {
+    typedTextRef.current = value;
+    setTypedText(value);
+  };
+
+  const handleIncrementBackspace = () => {
+    backspaceCountRef.current += 1;
+    setBackspaceCount(backspaceCountRef.current);
   };
 
   // Retake same test
@@ -191,6 +218,7 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
     } else {
       document.documentElement.classList.remove('dark');
     }
+    window.localStorage.setItem('cbtst-theme', nextVal ? 'dark' : 'light');
     const updated = saveStoredSettings({ darkMode: nextVal });
     setSettings(updated);
   };
@@ -204,11 +232,10 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-100/60 dark:bg-slate-950 transition-colors pb-12">
+    <div className="exam-screen flex-1 flex flex-col bg-slate-100/60 dark:bg-slate-950 transition-colors">
       {/* Top Header Bar */}
       <ExamHeader
         timeLeftSeconds={timeLeftSeconds}
-        totalDurationSeconds={selectedDuration * 60}
         fontSize={settings.fontSize}
         onFontSizeChange={handleFontSizeChange}
         soundEnabled={settings.soundEnabled}
@@ -223,25 +250,8 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
         testTitle={passage.title}
       />
 
-      {/* Breadcrumb / Return to Dashboard Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 w-full flex items-center justify-between text-xs">
-        <Link
-          href="/"
-          className="inline-flex items-center space-x-1.5 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to All Tests</span>
-        </Link>
-
-        <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400">
-          <span className="font-semibold text-slate-800 dark:text-slate-200">{passage.category}</span>
-          <span>•</span>
-          <span>{passage.wordCount} Words</span>
-        </div>
-      </div>
-
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full">
+      <main className="exam-main flex-1 max-w-[1440px] mx-auto w-full">
         {isTestCompleted && evaluationResult ? (
           <ResultModal
             result={evaluationResult}
@@ -252,10 +262,10 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
           <TypingArea
             passage={passage}
             typedText={typedText}
-            onTypedTextChange={setTypedText}
+            onTypedTextChange={handleTypedTextChange}
             backspaceEnabled={settings.backspaceEnabled}
             backspaceCount={backspaceCount}
-            onIncrementBackspace={() => setBackspaceCount((prev) => prev + 1)}
+            onIncrementBackspace={handleIncrementBackspace}
             isTestActive={isTestActive}
             onStartTest={handleStartTest}
             onSubmitTest={finishTest}

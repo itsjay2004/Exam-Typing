@@ -89,28 +89,21 @@ export default function TypingArea({
   const currentLap = isRetyping ? Math.floor(typedKeystrokes / passageKeystrokes) + 1 : 1;
 
   return (
-    <div className="flex flex-col space-y-4 max-w-7xl mx-auto px-4 sm:px-6 py-4">
+    <div className="typing-workspace flex flex-col space-y-3 max-w-[1440px] mx-auto px-3 sm:px-5 py-3 sm:py-4">
       {/* Top Box: Original Passage */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-colors">
-        <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+      <section className="exam-panel reading-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-colors" aria-label="Original passage">
+        <div className="exam-panel-heading bg-slate-50 dark:bg-slate-800/60 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
             <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
               Original Passage
             </span>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-              {passage.category}
-            </span>
+            <span className="exam-panel-tag">READ ONLY</span>
           </div>
 
-          <div className="flex items-center space-x-3 text-xs text-slate-500 dark:text-slate-400">
-            <span>
-              Given Keystrokes: <strong className="font-mono text-slate-700 dark:text-slate-200">{passageKeystrokes}</strong>
-            </span>
-            <span>•</span>
-            <span>
-              Words: <strong className="font-mono text-slate-700 dark:text-slate-200">{passage.wordCount}</strong>
-            </span>
+          <div className="exam-passage-stats text-xs text-slate-500 dark:text-slate-400">
+            <span><strong>{passage.wordCount}</strong> words</span>
+            <span><strong>{passageKeystrokes}</strong> characters</span>
           </div>
         </div>
 
@@ -119,11 +112,11 @@ export default function TypingArea({
           onCopy={(e) => e.preventDefault()}
           onContextMenu={(e) => e.preventDefault()}
           style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
-          className="p-5 h-44 sm:h-52 overflow-y-auto font-sans text-slate-800 dark:text-slate-200 select-none bg-slate-50/40 dark:bg-slate-950/30 whitespace-pre-wrap tracking-wide"
+          className="exam-passage-text p-5 h-60 sm:h-64 overflow-y-auto font-sans text-slate-800 dark:text-slate-200 select-none bg-slate-50/40 dark:bg-slate-950/30 whitespace-pre-wrap tracking-wide"
         >
           {passage.text}
         </div>
-      </div>
+      </section>
 
       {/* Retyping alert banner if candidate loops passage */}
       {isRetyping && (
@@ -136,30 +129,22 @@ export default function TypingArea({
       )}
 
       {/* Bottom Box: Candidate Typing Area */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-colors relative">
-        <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isTestActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-            <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
-              Typing Area
+      <section className="exam-panel response-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-colors relative" aria-label="Typing response">
+        <div className="exam-panel-heading typing-panel-heading bg-slate-50 dark:bg-slate-800/60 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isTestActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+            <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 shrink-0">
+              Your Response
             </span>
-            {!isTestActive && (
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                (Timer will start automatically upon your first keystroke)
-              </span>
-            )}
+            <span className="typing-ready-note text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              {isTestActive ? 'Test in progress' : 'Ready · timer starts on your first keystroke'}
+            </span>
           </div>
 
-          <div className="flex items-center space-x-4 text-xs">
-            <span className="text-slate-600 dark:text-slate-300">
-              Keystrokes: <strong className="font-mono text-slate-900 dark:text-white">{typedKeystrokes}</strong>
-            </span>
-            <span className="text-slate-600 dark:text-slate-300">
-              Words: <strong className="font-mono text-slate-900 dark:text-white">{liveWords}</strong>
-            </span>
-            <span className="text-slate-600 dark:text-slate-300">
-              Backspaces: <strong className={`font-mono ${backspaceCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>{backspaceCount}</strong>
-            </span>
+          <div className="typing-live-stats text-[11px]">
+            <span>Keys <strong>{typedKeystrokes}</strong></span>
+            <span>Words <strong>{liveWords}</strong></span>
+            <span>Bksp <strong className={backspaceCount > 0 ? 'has-backspaces' : ''}>{backspaceCount}</strong></span>
           </div>
         </div>
 
@@ -175,8 +160,8 @@ export default function TypingArea({
             autoComplete="off"
             autoCorrect="off"
             style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
-            placeholder="Click here and start typing to begin the official RRB NTPC test..."
-            className="w-full h-48 sm:h-56 p-5 font-sans outline-none resize-none bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 tracking-wide border-0 focus:ring-0"
+            placeholder="Type the passage here. The timer begins with your first keystroke."
+            className="exam-response-input w-full h-40 sm:h-44 p-5 font-sans outline-none resize-none bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 tracking-wide border-0 focus:ring-0"
           />
 
           {/* Floating warning when candidate hits backspace while disabled */}
@@ -189,14 +174,14 @@ export default function TypingArea({
         </div>
 
         {/* Footer Action Buttons */}
-        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div className="exam-panel-footer px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={onCancelTest}
             className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-900 transition-colors"
           >
             <XCircle className="w-4 h-4" />
-            <span>Cancel Test</span>
+              <span>Cancel Attempt</span>
           </button>
 
           <div className="flex items-center space-x-3">
@@ -210,7 +195,7 @@ export default function TypingArea({
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

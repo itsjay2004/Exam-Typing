@@ -51,21 +51,20 @@ The engine in `src/lib/ntpcEngine.ts` implements the exact evaluation logic:
 | `/` | `src/app/page.tsx` | **Tests Catalog & Dashboard**: Lists all available tests as cards. Displays status (Pass/Fail), Net WPM, accuracy, mistakes, and attempts count for attempted tests, with **"Attempt"** / **"Re-attempt"** and **"View Last Result"** buttons. |
 | `/test/[id]` | `src/app/test/[id]/page.tsx` | **Dedicated Exam Simulator**: Clean, focused test interface with timer, passage box, typing textarea, backspace blocker, font slider, and the full diagnostic result screen on completion. |
 | `/history` | `src/app/history/page.tsx` | **Progress & Analytics**: Interactive SVG trend charts (Net WPM vs. Gross WPM with 30 WPM cutoff line), mistake category breakdown, full test history table, and JSON export/import. |
-| `/passages` | `src/app/passages/page.tsx` | **Passage Bank**: Catalog of official practice passages with category filters and word counts. |
 
 ---
 
 ## 4. Key Components & Modules
 
 - **`src/lib/ntpcEngine.ts`**: Dynamic programming (DP) word alignment algorithm with Levenshtein edit distance, omission/extra post-processing, spacing error detection, and official NTPC formula evaluation.
-- **`src/lib/passages.ts`**: Central registry of test passages (`DEFAULT_PASSAGES`) and custom passage helpers.
+- **`src/lib/passages.ts`**: Central registry of test passages (`DEFAULT_PASSAGES`).
 - **`src/lib/storage.ts`**: LocalStorage helper managing `TestAttempt[]`, user preferences (font size, sound, dark mode, backspace toggle, duration), aggregate analytics, and `getPassageStatsMap()`.
 - **`src/lib/sound.ts`**: Web Audio API mechanical typewriter sound synthesizer.
 - **`src/components/ExamHeader.tsx`**: TCS iON-styled exam header with timer, text size slider, backspace toggle, sound toggle, duration selector, and candidate badge.
 - **`src/components/TypingArea.tsx`**: Read-only passage reader and candidate typing textarea with backspace interception, paste prevention, and auto-looping passage detection.
 - **`src/components/ResultModal.tsx`**: Modernized diagnostic report showing Pass/Fail status, headline KPI cards, step-by-step formula math, smart AI coaching advice, category-filtered error explorer, and side-by-side passage visualizer.
 - **`src/components/ProgressCharts.tsx`**: Responsive SVG charts tracking speed progression and mistake distributions.
-- **`src/components/Navbar.tsx`**: Top navigation header linking Tests Catalog, Progress & Analytics, and Passage Bank.
+- **`src/components/Navbar.tsx`**: Top navigation header linking Home and Progress & Analytics, with a theme toggle.
 
 ---
 
@@ -80,14 +79,13 @@ Open `src/lib/passages.ts` and append an entry to `DEFAULT_PASSAGES`:
 {
   id: 'test-09',
   title: 'Test Set #09: Indian Semiconductor Mission',
-  category: 'Technology',
   wordCount: 335,
   text: `Your passage text goes here...`,
 }
 ```
 
-- When you push to GitHub, Vercel will automatically generate static pages (`/test/test-09`), add the test card to the homepage catalog, and make it universally accessible to all users.
-- Users can also create temporary/practice custom passages directly from the UI via the **"+ Add Custom Passage"** button, which stores them in their browser's LocalStorage.
+- When you push to GitHub, Vercel will automatically generate the test page (`/test/test-09`) and add the test card to the home catalog.
+- The home catalog supports searching passages and filtering by attempt status.
 
 ---
 

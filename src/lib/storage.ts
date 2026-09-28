@@ -10,7 +10,6 @@ export interface TestAttempt {
   dateFormatted: string;
   passageId: string;
   passageTitle: string;
-  passageCategory: string;
   durationMinutes: number;
   backspaceEnabled: boolean;
   result: NTPCResult;
@@ -110,7 +109,6 @@ export function getPassageStatsMap(): Record<string, PassageAttemptStat> {
 export function saveTestAttempt(params: {
   passageId: string;
   passageTitle: string;
-  passageCategory: string;
   durationMinutes: number;
   backspaceEnabled: boolean;
   result: NTPCResult;
@@ -128,7 +126,6 @@ export function saveTestAttempt(params: {
     }),
     passageId: params.passageId,
     passageTitle: params.passageTitle,
-    passageCategory: params.passageCategory,
     durationMinutes: params.durationMinutes,
     backspaceEnabled: params.backspaceEnabled,
     result: params.result,
@@ -159,10 +156,13 @@ export function deleteTestAttempt(id: string): void {
   }
 }
 
-export function clearAllHistory(): void {
+export function clearAllAppData(): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
+    localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+    localStorage.removeItem('rrb_custom_passages');
+    localStorage.removeItem('cbtst-theme');
   } catch {
     // ignore
   }

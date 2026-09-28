@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   getTestHistory,
   calculateAnalytics,
   deleteTestAttempt,
-  clearAllHistory,
+  clearAllAppData,
   exportHistoryAsJson,
   importHistoryFromJson,
   TestAttempt,
@@ -14,18 +15,9 @@ import {
 import ProgressCharts from '../../components/ProgressCharts';
 import ResultModal from '../../components/ResultModal';
 import {
-  History,
-  Download,
-  Upload,
-  Trash2,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Keyboard,
-  ArrowUpDown,
-  Search,
+  Activity, ArrowDownToLine, ArrowUpFromLine, Check, Clock3, Eye,
+  Keyboard, Search, Trash2, X,
 } from 'lucide-react';
-import Link from 'next/link';
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<TestAttempt[]>([]);
@@ -33,7 +25,6 @@ export default function HistoryPage() {
   const [selectedAttempt, setSelectedAttempt] = useState<TestAttempt | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pass' | 'fail'>('all');
-  const [isMounted, setIsMounted] = useState(false);
 
   const loadData = () => {
     const list = getTestHistory();
@@ -41,10 +32,7 @@ export default function HistoryPage() {
     setAnalytics(calculateAnalytics(list));
   };
 
-  useEffect(() => {
-    setIsMounted(true);
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const handleDelete = (id: string) => {
     if (confirm('Delete this test record from your history?')) {
@@ -53,16 +41,15 @@ export default function HistoryPage() {
     }
   };
 
-  const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear your entire typing history? This cannot be undone.')) {
-      clearAllHistory();
-      loadData();
+  const handleResetAllData = () => {
+    if (confirm('Reset all app data? This permanently deletes test history, custom passages, saved settings, and the theme preference. This cannot be undone.')) {
+      clearAllAppData();
+      window.location.reload();
     }
   };
 
   const handleExport = () => {
-    const json = exportHistoryAsJson();
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([exportHistoryAsJson()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -78,260 +65,121 @@ export default function HistoryPage() {
     reader.onload = (event) => {
       const content = event.target?.result as string;
       if (content) {
-        const success = importHistoryFromJson(content);
-        if (success) {
+        if (importHistoryFromJson(content)) {
           alert('History imported successfully!');
           loadData();
-        } else {
-          alert('Failed to parse history JSON file.');
-        }
+        } else alert('Failed to parse history JSON file.');
       }
+      e.target.value = '';
     };
     reader.readAsText(file);
   };
 
-  // Filter history
   const filteredHistory = history.filter((item) => {
-    const matchesSearch =
-      item.passageTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.passageCategory.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus =
-      filterStatus === 'all'
-        ? true
-        : filterStatus === 'pass'
-        ? item.result.isPass
-        : !item.result.isPass;
-
+    const matchesSearch = item.passageTitle.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'pass' ? item.result.isPass : !item.result.isPass);
     return matchesSearch && matchesStatus;
   });
 
   return (
-    <div className="min-h-screen bg-slate-100/60 dark:bg-slate-950 transition-colors pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Page Title & Actions Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-              <History className="w-6 h-6 text-blue-600" />
-              <span>Progress Tracking & Analytics</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              All your RRB NTPC practice sessions are automatically stored in your browser's LocalStorage.
-            </p>
-          </div>
-
-          <div className="flex items-center flex-wrap gap-2 text-xs">
-            <Link
-              href="/"
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors"
-            >
-              <Keyboard className="w-4 h-4" />
-              <span>Take New Test</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={history.length === 0}
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 disabled:opacity-50 transition-colors shadow-sm"
-              title="Download your full test history as a JSON file backup"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span>Export JSON</span>
-            </button>
-
-            <label className="flex items-center space-x-1.5 px-3 py-2 rounded-lg font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors shadow-sm">
-              <Upload className="w-3.5 h-3.5 text-slate-500" />
-              <span>Import JSON</span>
-              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-            </label>
-
-            {history.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearAll}
-                className="flex items-center space-x-1 px-2.5 py-2 rounded-lg font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900 transition-colors"
-                title="Clear all saved history"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-10 space-y-7">
+        <section className="relative overflow-hidden rounded-3xl border border-blue-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-blue-50/90 dark:from-blue-950/30 to-transparent pointer-events-none" />
+          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 p-6 sm:p-8">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-3 py-1.5 text-xs font-bold tracking-wide mb-4">
+                <Activity className="w-3.5 h-3.5" /> YOUR PRACTICE, OVER TIME
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white">Progress that adds up.</h1>
+              <p className="mt-2 text-sm sm:text-base leading-relaxed text-slate-600 dark:text-slate-400">Review your speed, accuracy, and qualification trend across every RRB NTPC practice session.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/" className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-sm font-semibold shadow-sm shadow-blue-600/20 transition-colors">
+                <Keyboard className="w-4 h-4" /> Practice now
+              </Link>
+              <button type="button" onClick={handleExport} disabled={!history.length} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800 px-3.5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors" title="Download your history backup">
+                <ArrowDownToLine className="w-4 h-4" /> Export
               </button>
-            )}
+              <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800 px-3.5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors">
+                <ArrowUpFromLine className="w-4 h-4" /> Import
+                <input type="file" accept=".json,application/json" onChange={handleImport} className="sr-only" />
+              </label>
+              <button type="button" onClick={handleResetAllData} className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors" title="Delete all saved app data and restore defaults">
+                <Trash2 className="w-4 h-4" /><span className="hidden sm:inline">Reset data</span>
+              </button>
+            </div>
           </div>
-        </div>
+          <div className="relative grid grid-cols-2 sm:grid-cols-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/30">
+            <div className="px-6 py-3.5"><span className="block text-[10px] uppercase tracking-widest font-bold text-slate-400">Saved attempts</span><span className="mt-1 block text-sm font-bold text-slate-800 dark:text-slate-200">{history.length} {history.length === 1 ? 'session' : 'sessions'}</span></div>
+            <div className="px-6 py-3.5 border-l border-slate-100 dark:border-slate-800"><span className="block text-[10px] uppercase tracking-widest font-bold text-slate-400">Qualified</span><span className="mt-1 block text-sm font-bold text-emerald-600 dark:text-emerald-400">{analytics?.passedTests ?? 0} passed</span></div>
+            <div className="hidden sm:block px-6 py-3.5 border-l border-slate-100 dark:border-slate-800"><span className="block text-[10px] uppercase tracking-widest font-bold text-slate-400">Stored on</span><span className="mt-1 block text-sm font-bold text-slate-700 dark:text-slate-300">This browser</span></div>
+          </div>
+        </section>
 
-        {/* Analytics Charts & KPI Cards */}
         {analytics && <ProgressCharts history={history} analytics={analytics} />}
 
-        {/* Test History Log Table */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 px-5 sm:px-6 py-5 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Detailed Test Log ({history.length} Attempts)
-              </h2>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Click "View Breakdown" to inspect any past test's word-by-word error analysis.
-              </span>
+              <div className="flex items-center gap-2"><Clock3 className="w-4 h-4 text-blue-500" /><h2 className="text-lg font-bold text-slate-900 dark:text-white">Test history</h2><span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{filteredHistory.length} of {history.length}</span></div>
+              <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">Open a breakdown to inspect the result of any attempt.</p>
             </div>
-
-            {/* Filter and Search */}
-            <div className="flex items-center space-x-2 text-xs">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search passages..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none w-44"
-                />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input type="search" placeholder="Search test sets…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-9 pr-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400" />
               </div>
-
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none cursor-pointer"
-              >
-                <option value="all">All Results</option>
-                <option value="pass">Only Passed (≥30 WPM)</option>
-                <option value="fail">Only Failed (&lt;30 WPM)</option>
-              </select>
+              <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-1" role="group" aria-label="Filter results">
+                {(['all', 'pass', 'fail'] as const).map((status) => <button key={status} type="button" onClick={() => setFilterStatus(status)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${filterStatus === status ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{status === 'all' ? 'All' : status === 'pass' ? 'Passed' : 'Failed'}</button>)}
+              </div>
             </div>
           </div>
 
           {filteredHistory.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400">
-              No matching test attempts found.
+            <div className="px-6 py-14 text-center">
+              <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400"><Search className="w-5 h-5" /></div>
+              <p className="font-semibold text-slate-700 dark:text-slate-200">{history.length ? 'No matching attempts' : 'Your attempts will appear here'}</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{history.length ? 'Try another search or result filter.' : 'Complete a typing test to start building your progress history.'}</p>
+              {!history.length && <Link href="/" className="inline-flex mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Start a practice test</Link>}
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-semibold">
-                  <tr>
-                    <th className="py-3 px-4">Date & Time</th>
-                    <th className="py-3 px-4">Passage Title</th>
-                    <th className="py-3 px-4 text-center">Duration</th>
-                    <th className="py-3 px-4 text-center">Net WPM</th>
-                    <th className="py-3 px-4 text-center">Gross WPM</th>
-                    <th className="py-3 px-4 text-center">Accuracy</th>
-                    <th className="py-3 px-4 text-center">Total Mistakes</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
+              <table className="w-full min-w-[950px] text-left text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-950/60 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <tr>{['Test set', 'Date', 'Time', 'Net WPM', 'Gross WPM', 'Accuracy', 'Mistakes', 'Result', ''].map((heading, i) => <th key={heading || i} className={`px-4 py-3 font-bold ${i > 1 ? 'text-center' : ''} ${i === 8 ? 'text-right' : ''}`}>{heading}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredHistory.map((item) => {
                     const r = item.result;
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
-                          {item.dateFormatted}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-800 dark:text-slate-200">
-                            {item.passageTitle}
-                          </div>
-                          <span className="text-[10px] text-slate-400">
-                            {item.passageCategory} • {r.totalWordsTyped} words
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-600 dark:text-slate-300">
-                          {item.durationMinutes}m
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-sm">
-                          <span
-                            className={
-                              r.isPass
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-rose-600 dark:text-rose-400'
-                            }
-                          >
-                            {r.netWpm}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-700 dark:text-slate-300">
-                          {r.grossWpm}
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-700 dark:text-slate-300">
-                          {r.accuracy}%
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-700 dark:text-slate-300">
-                          {r.totalMistakes.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
-                              r.isPass
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                            }`}
-                          >
-                            {r.isPass ? (
-                              <CheckCircle className="w-3 h-3" />
-                            ) : (
-                              <XCircle className="w-3 h-3" />
-                            )}
-                            {r.isPass ? 'PASS' : 'FAIL'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedAttempt(item)}
-                            className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition-colors inline-flex items-center gap-1"
-                            title="View word-by-word error breakdown"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Breakdown</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item.id)}
-                            className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
+                    return <tr key={item.id} className="group hover:bg-blue-50/40 dark:hover:bg-blue-950/15 transition-colors">
+                      <td className="px-4 py-4 max-w-[290px]"><div className="truncate font-semibold text-slate-800 dark:text-slate-200" title={item.passageTitle}>{item.passageTitle}</div><span className="text-xs text-slate-400">{r.totalWordsTyped} words typed</span></td>
+                      <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{item.dateFormatted}</td>
+                      <td className="px-4 py-4 text-center text-xs text-slate-500 dark:text-slate-400">{item.durationMinutes}m</td>
+                      <td className="px-4 py-4 text-center"><span className={`font-mono text-base font-extrabold ${r.isPass ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-100'}`}>{r.netWpm}</span></td>
+                      <td className="px-4 py-4 text-center font-mono text-slate-600 dark:text-slate-300">{r.grossWpm}</td>
+                      <td className="px-4 py-4 text-center font-mono text-slate-600 dark:text-slate-300">{r.accuracy}%</td>
+                      <td className="px-4 py-4 text-center font-mono text-slate-600 dark:text-slate-300">{r.totalMistakes.toFixed(2)}</td>
+                      <td className="px-4 py-4 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${r.isPass ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'}`}>{r.isPass ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}{r.isPass ? 'PASS' : 'FAIL'}</span></td>
+                      <td className="px-4 py-4 text-right whitespace-nowrap"><button type="button" onClick={() => setSelectedAttempt(item)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors" title="View word-by-word error breakdown"><Eye className="w-3.5 h-3.5" /><span>Breakdown</span></button><button type="button" onClick={() => handleDelete(item.id)} className="ml-1.5 rounded-lg p-2 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition-colors" title="Delete attempt"><Trash2 className="w-3.5 h-3.5" /></button></td>
+                    </tr>;
                   })}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
+        </section>
+        <p className="text-center text-xs text-slate-400 dark:text-slate-600">Your practice history is saved locally in this browser.</p>
       </div>
 
-      {/* Modal to view a past test attempt's full breakdown */}
-      {selectedAttempt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-          <div className="max-w-5xl w-full my-8 relative">
-            <button
-              type="button"
-              onClick={() => setSelectedAttempt(null)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-800 text-white hover:bg-slate-700 transition-colors shadow-lg"
-            >
-              <XCircle className="w-6 h-6" />
-            </button>
-            <ResultModal
-              result={selectedAttempt.result}
-              onRetake={() => {
-                setSelectedAttempt(null);
-                window.location.href = '/';
-              }}
-              onNextTest={() => {
-                setSelectedAttempt(null);
-                window.location.href = '/';
-              }}
-            />
+      {selectedAttempt && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setSelectedAttempt(null); }}>
+        <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+          <div className="relative w-full max-w-5xl my-2 sm:my-6">
+            <button type="button" onClick={() => setSelectedAttempt(null)} className="absolute -top-1 -right-1 sm:top-3 sm:right-3 z-20 rounded-full bg-slate-900/90 p-2 text-white shadow-lg hover:bg-slate-700" aria-label="Close result breakdown"><X className="w-5 h-5" /></button>
+            <ResultModal result={selectedAttempt.result} onRetake={() => { setSelectedAttempt(null); window.location.href = '/'; }} onNextTest={() => { setSelectedAttempt(null); window.location.href = '/'; }} />
           </div>
         </div>
-      )}
-    </div>
+      </div>}
+    </main>
   );
 }
