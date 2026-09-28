@@ -14,6 +14,7 @@ import {
   FileText,
   AlertTriangle,
   Info,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -242,43 +243,68 @@ export default function ResultModal({
             </ul>
           </div>
 
-          {/* Column 3: Error Breakdown */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700">
-              <div className="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400">
-                <Info className="w-4 h-4" />
+          {/* Column 3: Calculation & Error Breakdown */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700">
+                <div className="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  Net WPM Calculation
+                </h3>
               </div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                Error Breakdown
-              </h3>
+
+              <ul className="space-y-2 text-xs">
+                <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">1. Actual Words Typed</span>
+                  <strong className="text-slate-900 dark:text-slate-100 font-mono">
+                    {result.totalWordsTyped} <span className="text-[10px] text-slate-400 font-sans font-normal">({result.typedKeystrokes}/5)</span>
+                  </strong>
+                </li>
+                <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">2. Total Errors (Full + Half/2)</span>
+                  <strong className="text-rose-600 dark:text-rose-400 font-mono">
+                    {result.totalMistakes.toFixed(2)}
+                  </strong>
+                </li>
+                <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">3. 5% Exemption Buffer</span>
+                  <strong className="text-emerald-600 dark:text-emerald-400 font-mono">
+                    -{result.allowedMistakes} <span className="text-[10px] text-slate-400 font-sans font-normal">(Forgiven)</span>
+                  </strong>
+                </li>
+                <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">4. Net Penalized Errors</span>
+                  <strong className="text-rose-600 dark:text-rose-400 font-mono">
+                    {result.finalMistakes}
+                  </strong>
+                </li>
+                <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">5. 10x Word Penalty</span>
+                  <strong className="text-rose-600 dark:text-rose-400 font-mono">
+                    -{result.penaltyWords} words
+                  </strong>
+                </li>
+                <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">6. Net Words Remaining</span>
+                  <strong className="text-blue-600 dark:text-blue-400 font-mono">
+                    {Math.max(0, Number((result.totalWordsTyped - result.penaltyWords).toFixed(2)))} words
+                  </strong>
+                </li>
+                <li className="flex justify-between items-center py-1.5 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 mt-1">
+                  <span className="text-slate-800 dark:text-slate-200 font-bold text-xs">Final Net WPM</span>
+                  <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">
+                    {result.netWpm} WPM
+                  </strong>
+                </li>
+              </ul>
             </div>
 
-            <ul className="space-y-2 text-xs">
-              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">Total Given Key Strokes</span>
-                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.totalGivenKeystrokes}</strong>
-              </li>
-              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">Typed Key Strokes</span>
-                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.typedKeystrokes}</strong>
-              </li>
-              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">Total Words Typed</span>
-                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.totalWordsTyped}</strong>
-              </li>
-              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">Error Percentage</span>
-                <strong className="text-rose-600 dark:text-rose-400 font-mono">{result.errorPercentage}%</strong>
-              </li>
-              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">Accuracy</span>
-                <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{result.accuracy}%</strong>
-              </li>
-              <li className="flex justify-between py-1">
-                <span className="text-slate-600 dark:text-slate-400">Time Taken</span>
-                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.timeTakenFormatted}</strong>
-              </li>
-            </ul>
+            <div className="mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px] text-slate-500 flex justify-between font-mono">
+              <span>Accuracy: {result.accuracy}%</span>
+              <span>Time: {result.timeTakenFormatted}</span>
+            </div>
           </div>
         </div>
 
