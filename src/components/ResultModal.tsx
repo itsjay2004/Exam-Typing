@@ -1,0 +1,485 @@
+'use client';
+
+import React, { useState } from 'react';
+import { NTPCResult } from '../lib/ntpcEngine';
+import {
+  CheckCircle2,
+  XCircle,
+  Gauge,
+  Keyboard,
+  BarChart2,
+  RotateCcw,
+  ArrowRight,
+  TrendingUp,
+  FileText,
+  AlertTriangle,
+  Info,
+} from 'lucide-react';
+import Link from 'next/link';
+
+interface ResultModalProps {
+  result: NTPCResult;
+  onRetake: () => void;
+  onNextTest: () => void;
+  onClose?: () => void;
+}
+
+export default function ResultModal({
+  result,
+  onRetake,
+  onNextTest,
+}: ResultModalProps) {
+  const [activeTab, setActiveTab] = useState<'typed' | 'original'>('typed');
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl max-w-5xl mx-auto my-6 overflow-hidden transition-colors">
+      {/* Header Banner */}
+      <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+            <BarChart2 className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Typing Test Result
+            </h2>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Evaluated using Official RRB NTPC (TCS iON) 5% Relaxation Formula
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Link
+            href="/history"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 border border-blue-200 dark:border-blue-900 transition-colors"
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>View Progress & Trends</span>
+          </Link>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {/* Pass / Fail Big Status Box */}
+        <div
+          className={`py-4 px-6 rounded-2xl text-center border transition-all ${
+            result.isPass
+              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100'
+              : 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            {result.isPass ? (
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <XCircle className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+            )}
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {result.isPass ? 'Pass' : 'Fail'}
+            </span>
+          </div>
+          <p className="text-sm font-semibold opacity-90">
+            Net Speed: <strong className="font-mono text-base">{result.netWpm} WPM</strong>
+            <span className="mx-2 text-slate-400">•</span>
+            <span>Qualifying Requirement: 30 WPM</span>
+          </p>
+          {!result.isPass && (
+            <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">
+              {result.netWpm < 30
+                ? `Net speed fell below 30 WPM threshold by ${(30 - result.netWpm).toFixed(2)} WPM.`
+                : `Total typed words (${result.totalWordsTyped}) fell short of minimum word count floor.`}
+            </p>
+          )}
+        </div>
+
+        {/* 6 Key Stat Headline Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              NET WPM
+            </span>
+            <span
+              className={`text-2xl sm:text-3xl font-extrabold font-mono mt-0.5 block ${
+                result.netWpm >= 30 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              {result.netWpm}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              GROSS WPM
+            </span>
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-blue-600 dark:text-blue-400 mt-0.5 block">
+              {result.grossWpm}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              TOTAL MISTAKES
+            </span>
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-rose-600 dark:text-rose-400 mt-0.5 block">
+              {result.totalMistakes.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              TIME TAKEN
+            </span>
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-amber-600 dark:text-amber-400 mt-0.5 block">
+              {result.timeTakenFormatted}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              ACCURACY
+            </span>
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+              {result.accuracy}%
+            </span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              WORDS TYPED
+            </span>
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-blue-600 dark:text-blue-400 mt-0.5 block">
+              {result.totalWordsTyped}
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Detailed Breakdown Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Column 1: Performance Metrics */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700">
+              <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
+                <BarChart2 className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                Performance Metrics
+              </h3>
+            </div>
+
+            <ul className="space-y-2 text-xs">
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Typing Speed (Net WPM)</span>
+                <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{result.netWpm}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Gross Typing Speed (WPM)</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.grossWpm}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Full Mistakes</span>
+                <strong className="text-rose-600 dark:text-rose-400 font-mono">{result.fullMistakes}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Half Mistakes</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.halfMistakes}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Total Mistakes (Full + Half/2)</span>
+                <strong className="text-rose-600 dark:text-rose-400 font-mono">{result.totalMistakes.toFixed(2)}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Allowed Mistakes (5%)</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.allowedMistakes}</strong>
+              </li>
+              <li className="flex justify-between py-1">
+                <span className="text-slate-600 dark:text-slate-400 font-medium">Final Penalized Mistakes</span>
+                <strong className="text-rose-600 dark:text-rose-400 font-mono text-sm">{result.finalMistakes}</strong>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 2: Typing Metrics */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700">
+              <div className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400">
+                <Keyboard className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                Typing Metrics
+              </h3>
+            </div>
+
+            <ul className="space-y-2 text-xs">
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Spelling / Substitution</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.spellingErrors}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Omission (Word Skipped)</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.omissionErrors}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Extra Word Added</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.extraWordErrors}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Capitalization Error</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.capitalizationErrors}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Punctuation Error</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.punctuationErrors}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Spacing Error (Joined/Split)</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.spacingErrors}</strong>
+              </li>
+              <li className="flex justify-between py-1">
+                <span className="text-slate-600 dark:text-slate-400 font-medium">Backspace Count</span>
+                <strong className="text-amber-600 dark:text-amber-400 font-mono">{result.backspaceCount}</strong>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: Error Breakdown */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700">
+              <div className="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400">
+                <Info className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                Error Breakdown
+              </h3>
+            </div>
+
+            <ul className="space-y-2 text-xs">
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Total Given Key Strokes</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.totalGivenKeystrokes}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Typed Key Strokes</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.typedKeystrokes}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Total Words Typed</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.totalWordsTyped}</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Error Percentage</span>
+                <strong className="text-rose-600 dark:text-rose-400 font-mono">{result.errorPercentage}%</strong>
+              </li>
+              <li className="flex justify-between py-1 border-b border-slate-200/60 dark:border-slate-800">
+                <span className="text-slate-600 dark:text-slate-400">Accuracy</span>
+                <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{result.accuracy}%</strong>
+              </li>
+              <li className="flex justify-between py-1">
+                <span className="text-slate-600 dark:text-slate-400">Time Taken</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">{result.timeTakenFormatted}</strong>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Buttons Toolbar */}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onRetake}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 shadow-sm transition-all"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Retake Test</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onNextTest}
+            className="flex items-center space-x-2 px-6 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all"
+          >
+            <span>Next Practice Passage</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Error Color Legend (Identical to Screenshot) */}
+        <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">
+            <Info className="w-4 h-4 text-blue-500" />
+            <span>Error Color Legend</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: '#FF9999' }}></span>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Spelling / Substitution</span>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400">
+                Full Mistake
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: '#FFC1CC' }}></span>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Extra Word</span>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400">
+                Full Mistake
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: '#00FFFF' }}></span>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Omission (Word Skipped)</span>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400">
+                Full Mistake
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: '#DDA0DD' }}></span>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Punctuation</span>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                Half Mistake
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: '#FFFF99' }}></span>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Capitalization</span>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                Half Mistake
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: '#FFA500' }}></span>
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Spacing Error (Joined/Split)</span>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                Half Mistake
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Word-by-Word Error Breakdown Table (Identical to Screenshot) */}
+        {result.wordBreakdown.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-slate-50 dark:bg-slate-800/70 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                Error Breakdown — Word by Word ({result.wordBreakdown.length} mistakes detected)
+              </h3>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-semibold sticky top-0">
+                  <tr>
+                    <th className="py-2.5 px-4 w-12 text-center">#</th>
+                    <th className="py-2.5 px-4">ORIGINAL WORD</th>
+                    <th className="py-2.5 px-4">TYPED WORD</th>
+                    <th className="py-2.5 px-4">ERROR TYPE</th>
+                    <th className="py-2.5 px-4 text-center">MISTAKE</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                  {result.wordBreakdown.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <td className="py-2 px-4 text-center font-sans text-slate-500">{row.id}</td>
+                      <td className="py-2 px-4 font-bold text-slate-800 dark:text-slate-200">
+                        {row.originalWord}
+                      </td>
+                      <td className="py-2 px-4 font-bold text-slate-800 dark:text-slate-200">
+                        {row.typedWord}
+                      </td>
+                      <td className="py-2 px-4 font-sans">
+                        <span
+                          className="px-2 py-0.5 rounded text-[11px] font-semibold text-slate-900"
+                          style={{ backgroundColor: row.color }}
+                        >
+                          {row.errorType}
+                        </span>
+                      </td>
+                      <td className="py-2 px-4 text-center font-sans">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            row.mistakeType === 'Full Mistake'
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                          }`}
+                        >
+                          {row.mistakeType}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Visual Paragraph Comparison Tabs */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+            <button
+              type="button"
+              onClick={() => setActiveTab('typed')}
+              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                activeTab === 'typed'
+                  ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Typed Paragraph (Errors Highlighted)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('original')}
+              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                activeTab === 'original'
+                  ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Original Paragraph (Omissions Highlighted)</span>
+            </button>
+          </div>
+
+          <div className="p-5 text-sm sm:text-base leading-relaxed tracking-wide text-slate-800 dark:text-slate-200 font-sans max-h-80 overflow-y-auto">
+            {activeTab === 'typed' ? (
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: result.typedHighlightedHtml || '<em>No words typed.</em>',
+                }}
+              />
+            ) : (
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: result.originalHighlightedHtml,
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

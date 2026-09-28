@@ -1,68 +1,275 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect, useRef } from 'react';
+import ExamHeader from '../components/ExamHeader';
+import TypingArea from '../components/TypingArea';
+import ResultModal from '../components/ResultModal';
+import { getAllPassages, DEFAULT_PASSAGES, Passage } from '../lib/passages';
+import { evaluateTypingTest, NTPCResult } from '../lib/ntpcEngine';
+import {
+  getStoredSettings,
+  saveStoredSettings,
+  saveTestAttempt,
+  DEFAULT_SETTINGS,
+  UserSettings,
+} from '../lib/storage';
+import { soundController } from '../lib/sound';
+import { BookOpen, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+
+export default function ExamPage() {
+  const [passages, setPassages] = useState<Passage[]>(DEFAULT_PASSAGES);
+  const [currentPassageIndex, setCurrentPassageIndex] = useState(0);
+
+  // Settings
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+
+  // Test State
+  const [typedText, setTypedText] = useState('');
+  const [backspaceCount, setBackspaceCount] = useState(0);
+  const [isTestActive, setIsTestActive] = useState(false);
+  const [isTestCompleted, setIsTestCompleted] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(10);
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState(10 * 60);
+
+  // Results
+  const [evaluationResult, setEvaluationResult] = useState<NTPCResult | null>(null);
+
+  // Timing references
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+
+  // Load passages and settings on mount
+  useEffect(() => {
+    const loadedPassages = getAllPassages();
+    setPassages(loadedPassages);
+
+    const stored = getStoredSettings();
+    setSettings(stored);
+    setSelectedDuration(stored.defaultDurationMinutes);
+    setTimeLeftSeconds(stored.defaultDurationMinutes * 60);
+    soundController.setEnabled(stored.soundEnabled);
+
+    if (stored.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const currentPassage = passages[currentPassageIndex] || passages[0];
+
+  // Start test on first keypress
+  const handleStartTest = () => {
+    if (isTestActive || isTestCompleted) return;
+    setIsTestActive(true);
+    startTimeRef.current = Date.now();
+
+    timerIntervalRef.current = setInterval(() => {
+      setTimeLeftSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current!);
+          finishTest();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Submit & evaluate test
+  const finishTest = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    setIsTestActive(false);
+    setIsTestCompleted(true);
+
+    const now = Date.now();
+    const elapsed = startTimeRef.current
+      ? now - startTimeRef.current
+      : selectedDuration * 60 * 1000;
+
+    const evalResult = evaluateTypingTest({
+      originalPassage: currentPassage.text,
+      typedText,
+      testDurationMinutes: selectedDuration,
+      elapsedMilliseconds: elapsed,
+      backspaceCount,
+    });
+
+    setEvaluationResult(evalResult);
+
+    // Save to LocalStorage
+    saveTestAttempt({
+      passageId: currentPassage.id,
+      passageTitle: currentPassage.title,
+      passageCategory: currentPassage.category,
+      durationMinutes: selectedDuration,
+      backspaceEnabled: settings.backspaceEnabled,
+      result: evalResult,
+    });
+  };
+
+  // Cancel test
+  const handleCancelTest = () => {
+    if (isTestActive) {
+      const confirmCancel = window.confirm('Are you sure you want to cancel the current test? Your typed progress will be discarded.');
+      if (!confirmCancel) return;
+    }
+    resetTestState();
+  };
+
+  // Reset state for new attempt
+  const resetTestState = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    setIsTestActive(false);
+    setIsTestCompleted(false);
+    setEvaluationResult(null);
+    setTypedText('');
+    setBackspaceCount(0);
+    setTimeLeftSeconds(selectedDuration * 60);
+    startTimeRef.current = null;
+  };
+
+  // Retake same test
+  const handleRetake = () => {
+    resetTestState();
+  };
+
+  // Move to next test passage
+  const handleNextTest = () => {
+    if (passages.length === 0) return;
+    const nextIndex = (currentPassageIndex + 1) % passages.length;
+    setCurrentPassageIndex(nextIndex);
+    resetTestState();
+  };
+
+  // Handlers for settings
+  const handleFontSizeChange = (size: number) => {
+    const updated = saveStoredSettings({ fontSize: size });
+    setSettings(updated);
+  };
+
+  const handleToggleSound = () => {
+    const nextVal = !settings.soundEnabled;
+    soundController.setEnabled(nextVal);
+    const updated = saveStoredSettings({ soundEnabled: nextVal });
+    setSettings(updated);
+  };
+
+  const handleToggleBackspace = () => {
+    const nextVal = !settings.backspaceEnabled;
+    const updated = saveStoredSettings({ backspaceEnabled: nextVal });
+    setSettings(updated);
+  };
+
+  const handleDurationChange = (minutes: number) => {
+    setSelectedDuration(minutes);
+    setTimeLeftSeconds(minutes * 60);
+    const updated = saveStoredSettings({ defaultDurationMinutes: minutes });
+    setSettings(updated);
+  };
+
+  const handleToggleDarkMode = () => {
+    const nextVal = !settings.darkMode;
+    if (nextVal) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    const updated = saveStoredSettings({ darkMode: nextVal });
+    setSettings(updated);
+  };
+
+  if (!currentPassage) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8 text-slate-500">
+        Loading exam simulator...
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="flex-1 flex flex-col bg-slate-100/60 dark:bg-slate-950 transition-colors pb-12">
+      {/* Top Header Bar */}
+      <ExamHeader
+        timeLeftSeconds={timeLeftSeconds}
+        totalDurationSeconds={selectedDuration * 60}
+        fontSize={settings.fontSize}
+        onFontSizeChange={handleFontSizeChange}
+        soundEnabled={settings.soundEnabled}
+        onToggleSound={handleToggleSound}
+        backspaceEnabled={settings.backspaceEnabled}
+        onToggleBackspace={handleToggleBackspace}
+        selectedDuration={selectedDuration}
+        onDurationChange={handleDurationChange}
+        isTestActive={isTestActive}
+        darkMode={settings.darkMode}
+        onToggleDarkMode={handleToggleDarkMode}
+        testTitle={currentPassage.title}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl mx-auto w-full">
+        {/* Quick passage selector pill dropdown during setup */}
+        {!isTestActive && !isTestCompleted && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center space-x-2">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Select Passage:</span>
+              <select
+                value={currentPassageIndex}
+                onChange={(e) => {
+                  setCurrentPassageIndex(Number(e.target.value));
+                  resetTestState();
+                }}
+                className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md px-2.5 py-1 text-slate-800 dark:text-slate-200 outline-none shadow-sm cursor-pointer"
+              >
+                {passages.map((p, idx) => (
+                  <option key={p.id} value={idx}>
+                    {p.title} ({p.wordCount} words)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-3 text-slate-500 dark:text-slate-400">
+              <Link
+                href="/passages"
+                className="hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 font-medium transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Browse All {passages.length} Passages / Add Custom</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* If Test Completed: Show Complete Result Modal */}
+        {isTestCompleted && evaluationResult ? (
+          <ResultModal
+            result={evaluationResult}
+            onRetake={handleRetake}
+            onNextTest={handleNextTest}
+          />
+        ) : (
+          /* Typing Simulation Interface */
+          <TypingArea
+            passage={currentPassage}
+            typedText={typedText}
+            onTypedTextChange={setTypedText}
+            backspaceEnabled={settings.backspaceEnabled}
+            backspaceCount={backspaceCount}
+            onIncrementBackspace={() => setBackspaceCount((prev) => prev + 1)}
+            isTestActive={isTestActive}
+            onStartTest={handleStartTest}
+            onSubmitTest={finishTest}
+            onCancelTest={handleCancelTest}
+            fontSize={settings.fontSize}
+          />
+        )}
       </main>
     </div>
   );
