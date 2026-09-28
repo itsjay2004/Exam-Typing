@@ -78,6 +78,35 @@ export function getTestHistory(): TestAttempt[] {
   return [];
 }
 
+export interface PassageAttemptStat {
+  count: number;
+  latest: TestAttempt;
+  best: TestAttempt;
+}
+
+export function getPassageStatsMap(): Record<string, PassageAttemptStat> {
+  const history = getTestHistory();
+  const map: Record<string, PassageAttemptStat> = {};
+
+  history.forEach((attempt) => {
+    const id = attempt.passageId;
+    if (!map[id]) {
+      map[id] = {
+        count: 1,
+        latest: attempt,
+        best: attempt,
+      };
+    } else {
+      map[id].count++;
+      if (attempt.result.netWpm > map[id].best.result.netWpm) {
+        map[id].best = attempt;
+      }
+    }
+  });
+
+  return map;
+}
+
 export function saveTestAttempt(params: {
   passageId: string;
   passageTitle: string;

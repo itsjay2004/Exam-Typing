@@ -3,13 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Keyboard, BarChart2, BookOpen, ShieldCheck } from 'lucide-react';
+import { Layers, Keyboard, BarChart2, BookOpen, ShieldCheck } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Exam Simulator', icon: Keyboard },
+    { href: '/', label: 'Tests Catalog', icon: Layers },
     { href: '/history', label: 'Progress & Analytics', icon: BarChart2 },
     { href: '/passages', label: 'Passage Bank', icon: BookOpen },
   ];
