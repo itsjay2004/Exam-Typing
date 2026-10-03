@@ -30,10 +30,19 @@ export default function ResultModal({
   onRetake,
   onNextTest,
 }: ResultModalProps) {
-  const [activeTab, setActiveTab] = useState<'typed' | 'original'>('typed');
+  const [passageView, setPassageView] = useState<'comparison' | 'inline'>('inline');
+  const reviewColors: Record<string, string> = {
+    spelling: '#FF9999',
+    extra: '#FFC1CC',
+    omission: '#00FFFF',
+    capitalization: '#FFFF99',
+    punctuation: '#DDA0DD',
+    spacing: '#FFA500',
+    transposition: '#FF9999',
+  };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl max-w-5xl mx-auto my-6 overflow-hidden transition-colors">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl max-w-7xl mx-auto my-6 overflow-hidden transition-colors">
       {/* Header Banner */}
       <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
@@ -460,51 +469,80 @@ export default function ResultModal({
           </div>
         )}
 
-        {/* Visual Paragraph Comparison Tabs */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
-            <button
-              type="button"
-              onClick={() => setActiveTab('typed')}
-              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold transition-colors ${
-                activeTab === 'typed'
-                  ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Typed Paragraph (Errors Highlighted)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('original')}
-              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold transition-colors ${
-                activeTab === 'original'
-                  ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Original Paragraph (Omissions Highlighted)</span>
-            </button>
+        {/* Full paragraph review with side-by-side and inline modes */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">Passage Evaluation</h3>
+            </div>
+            <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-200/70 dark:bg-slate-900" role="group" aria-label="Passage review layout">
+              <button type="button" onClick={() => setPassageView('comparison')} aria-pressed={passageView === 'comparison'} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${passageView === 'comparison' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}>
+                Side by side
+              </button>
+              <button type="button" onClick={() => setPassageView('inline')} aria-pressed={passageView === 'inline'} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${passageView === 'inline' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}>
+                Inline mistakes
+              </button>
+            </div>
           </div>
 
-          <div className="p-5 text-sm sm:text-base leading-relaxed tracking-wide text-slate-800 dark:text-slate-200 font-sans max-h-80 overflow-y-auto">
-            {activeTab === 'typed' ? (
+          {passageView === 'inline' ? (
+            <div className="p-5 text-sm leading-relaxed font-sans text-slate-800 dark:text-slate-200">
+              <div className="flex flex-wrap items-end gap-x-1.5 gap-y-2">
+                {result.passageReview.map((token, index) => {
+                  const isMistake = !token.pending && token.type !== 'correct';
+                  const original = token.originalWord ?? '∅';
+                  const typed = token.typedWord ?? '— skipped —';
+                  const color = reviewColors[token.type];
+
+                  return (
+                    <span key={`${index}-${token.originalWord ?? 'extra'}`} className="inline-flex max-w-full flex-col items-center align-bottom text-center">
+                      {isMistake && (
+                        <span className="mb-0.5 max-w-full break-words rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
+                          {typed}
+                        </span>
+                      )}
+                      <span className="break-words rounded px-1 py-0.5" style={isMistake ? { backgroundColor: color } : undefined}>
+                        {original}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+              {result.passageReview.length === 0 && <p className="text-slate-500">No passage text to review.</p>}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 p-4">
+          <section className="min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+              <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">Typed Paragraph (Errors Highlighted)</h3>
+            </div>
+            <div className="p-5 text-sm leading-relaxed tracking-wide text-slate-800 dark:text-slate-200 font-sans break-words">
               <div
                 dangerouslySetInnerHTML={{
                   __html: result.typedHighlightedHtml || '<em>No words typed.</em>',
                 }}
               />
-            ) : (
+            </div>
+          </section>
+
+          <section className="min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+              <FileText className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">Original Paragraph (Omissions Highlighted)</h3>
+            </div>
+            <div className="p-5 text-sm leading-relaxed tracking-wide text-slate-800 dark:text-slate-200 font-sans break-words">
               <div
                 dangerouslySetInnerHTML={{
                   __html: result.originalHighlightedHtml,
                 }}
               />
-            )}
-          </div>
-        </div>
+            </div>
+          </section>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

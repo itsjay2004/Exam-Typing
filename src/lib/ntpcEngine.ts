@@ -52,6 +52,12 @@ export interface NTPCResult {
     mistakeType: 'Full Mistake' | 'Half Mistake';
     color: string;
   }[];
+  passageReview: {
+    originalWord?: string;
+    typedWord?: string;
+    type: WordToken['type'];
+    pending?: boolean;
+  }[];
   typedHighlightedHtml: string;
   originalHighlightedHtml: string;
 }
@@ -179,11 +185,34 @@ export function alignWords(originalWords: string[], typedWords: string[]): WordT
         from: { i, j: j - 1 },
       };
 
+      // Treat a word split by an accidental space as one localized mistake.
+      // Without this transition, the word DP can align each fragment against
+      // following words and incorrectly mark the rest of the passage as wrong.
+      let splitWordOption: typeof matchOption | null = null;
+      for (let splitSize = 2; splitSize <= 3 && j >= splitSize; splitSize++) {
+        const fragments = typedWords.slice(j - splitSize, j);
+        const joined = fragments.join('');
+        const sameIgnoringCase = orig.toLowerCase() === joined.toLowerCase();
+        const sameIgnoringPunctuation = stripPunctuation(orig).toLowerCase() === stripPunctuation(joined).toLowerCase();
+        const splitDistance = levenshteinDistance(orig.toLowerCase(), joined.toLowerCase());
+        const splitThreshold = Math.max(2, Math.min(4, Math.ceil(orig.length * 0.6)));
+
+        if (sameIgnoringCase || sameIgnoringPunctuation || splitDistance <= splitThreshold) {
+          const candidate = {
+            cost: dp[i - 1][j - splitSize].cost + 1.0,
+            type: sameIgnoringPunctuation && !sameIgnoringCase ? 'punctuation' as const : 'spelling' as const,
+            from: { i: i - 1, j: j - splitSize },
+          };
+          if (!splitWordOption || candidate.cost < splitWordOption.cost) splitWordOption = candidate;
+        }
+      }
+
       let best: {
         cost: number;
         type: WordToken['type'] | 'start';
         from: { i: number; j: number } | null;
       } = matchOption;
+      if (splitWordOption && splitWordOption.cost < best.cost) best = splitWordOption;
       if (omissionOption.cost < best.cost) best = omissionOption;
       if (extraOption.cost < best.cost) best = extraOption;
 
@@ -193,7 +222,15 @@ export function alignWords(originalWords: string[], typedWords: string[]): WordT
 
   // Backtrack to assemble tokens
   const tokens: WordToken[] = [];
-  let currI = m;
+  // The candidate may stop before the passage ends. Charging the alignment
+  // for every untouched trailing word can make a repeated word near the end
+  // (for example "system") pull an otherwise correct typed prefix forward.
+  // Pick the cheapest endpoint after all typed words have been consumed; on a
+  // tie, keep the earlier passage position.
+  let currI = 0;
+  for (let i = 1; i <= m; i++) {
+    if (dp[i][n].cost < dp[currI][n].cost) currI = i;
+  }
   let currJ = n;
 
   while (currI > 0 || currJ > 0) {
@@ -203,7 +240,13 @@ export function alignWords(originalWords: string[], typedWords: string[]): WordT
     const fromI = cell.from.i;
     const fromJ = cell.from.j;
 
-    if (fromI === currI - 1 && fromJ === currJ - 1) {
+    if (fromI === currI - 1 && currJ - fromJ > 1) {
+      tokens.unshift({
+        type: cell.type as WordToken['type'],
+        original: originalWords[currI - 1],
+        user: typedWords.slice(fromJ, currJ).join(' '),
+      });
+    } else if (fromI === currI - 1 && fromJ === currJ - 1) {
       tokens.unshift({
         type: cell.type as WordToken['type'],
         original: originalWords[currI - 1],
@@ -346,6 +389,93 @@ export function expandPassageForRetyping(originalWords: string[], typedWords: st
   return expanded;
 }
 
+function isPassageRestart(originalWords: string[], typedWords: string[], index: number): boolean {
+  // Three opening words make a reliable lap marker while allowing one-character
+  // typos in each word. Permit up to two unmatched typed tokens between the
+  // opening words so a stray keystroke/word does not turn the rest of a
+  // correctly restarted passage into extra-word errors.
+  if (index < Math.ceil(originalWords.length * 0.6) || index + 4 >= typedWords.length) return false;
+
+  const openingWords = originalWords.slice(0, 3);
+  let typedIndex = index;
+  let skippedTypedWords = 0;
+
+  for (const originalWord of openingWords) {
+    const expected = originalWord.toLowerCase();
+    while (
+      typedIndex < typedWords.length &&
+      levenshteinDistance(expected, typedWords[typedIndex].toLowerCase()) > 1 &&
+      skippedTypedWords < 2 &&
+      typedIndex - index < 5
+    ) {
+      typedIndex++;
+      skippedTypedWords++;
+    }
+
+    if (typedIndex >= typedWords.length || levenshteinDistance(expected, typedWords[typedIndex].toLowerCase()) > 1) {
+      return false;
+    }
+    typedIndex++;
+  }
+
+  return true;
+}
+
+function trimUnreachedOmissions(tokens: WordToken[]): WordToken[] {
+  let lastReached = tokens.length - 1;
+  while (lastReached >= 0 && tokens[lastReached].type === 'omission') lastReached--;
+  return tokens.slice(0, lastReached + 1);
+}
+
+function alignPassageLaps(originalWords: string[], typedWords: string[]): {
+  tokens: WordToken[];
+  passageReview: NTPCResult['passageReview'];
+} {
+  if (originalWords.length === 0 || typedWords.length === 0) {
+    return {
+      tokens: [],
+      passageReview: originalWords.map((originalWord) => ({ originalWord, type: 'correct', pending: true })),
+    };
+  }
+
+  const lapStarts = [0];
+  let minimumNextStart = Math.ceil(originalWords.length * 0.45);
+
+  for (let i = 1; i < typedWords.length - 2; i++) {
+    if (i < minimumNextStart || !isPassageRestart(originalWords, typedWords, i)) continue;
+    lapStarts.push(i);
+    minimumNextStart = i + Math.ceil(originalWords.length * 0.45);
+    i += 2;
+  }
+
+  const aligned: WordToken[] = [];
+  const passageReview: NTPCResult['passageReview'] = [];
+  let reachedOriginalWordsInLastLap = 0;
+  for (let lap = 0; lap < lapStarts.length; lap++) {
+    const start = lapStarts[lap];
+    const end = lapStarts[lap + 1] ?? typedWords.length;
+    let lapTokens = alignWords(originalWords, typedWords.slice(start, end));
+    lapTokens = resolveSpacingErrors(lapTokens);
+    lapTokens = refineOmissionExtraPairs(lapTokens);
+    const reachedLapTokens = trimUnreachedOmissions(lapTokens);
+    aligned.push(...reachedLapTokens);
+    passageReview.push(...reachedLapTokens.map((token) => ({
+      originalWord: token.original,
+      typedWord: token.user,
+      type: token.type,
+    })));
+    reachedOriginalWordsInLastLap = reachedLapTokens.filter((token) => token.original !== undefined).length;
+  }
+
+  passageReview.push(...originalWords.slice(reachedOriginalWordsInLastLap).map((originalWord) => ({
+    originalWord,
+    type: 'correct' as const,
+    pending: true,
+  })));
+
+  return { tokens: aligned, passageReview };
+}
+
 /**
  * Main NTPC Evaluation Function
  */
@@ -370,28 +500,9 @@ export function evaluateTypingTest(params: {
   const originalWords = cleanedOriginal.split(' ').filter((w) => w.length > 0);
   const typedWords = cleanedTyped.split(' ').filter((w) => w.length > 0);
 
-  // Expand passage if retyped
-  const expandedOriginal = expandPassageForRetyping(originalWords, typedWords);
-
-  // Align
-  let alignedTokens = alignWords(expandedOriginal, typedWords);
-  alignedTokens = resolveSpacingErrors(alignedTokens);
-  alignedTokens = refineOmissionExtraPairs(alignedTokens);
-
-  // Trim trailing omissions (words user didn't reach are NOT counted as errors)
-  let lastNonOmissionIdx = -1;
-  for (let i = alignedTokens.length - 1; i >= 0; i--) {
-    if (alignedTokens[i].type !== 'omission') {
-      lastNonOmissionIdx = i;
-      break;
-    }
-  }
-
-  if (lastNonOmissionIdx !== -1) {
-    alignedTokens = alignedTokens.slice(0, lastNonOmissionIdx + 1);
-  } else if (typedWords.length === 0) {
-    alignedTokens = [];
-  }
+  // Align each clearly detected retyped lap independently so a mismatch in one
+  // lap cannot shift every later word into the wrong place.
+  const { tokens: alignedTokens, passageReview } = alignPassageLaps(originalWords, typedWords);
 
   // Count errors
   let spellingErrors = 0;
@@ -601,6 +712,7 @@ export function evaluateTypingTest(params: {
     errorPercentage,
 
     wordBreakdown,
+    passageReview,
     typedHighlightedHtml: typedHighlightedHtml.trim(),
     originalHighlightedHtml: originalHighlightedHtml.trim(),
   };

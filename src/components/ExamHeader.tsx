@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Clock,
   Delete,
+  Keyboard,
   Maximize2,
   Minimize2,
   Moon,
@@ -19,6 +20,8 @@ interface ExamHeaderProps {
   timeLeftSeconds: number;
   fontSize: number;
   onFontSizeChange: (size: number) => void;
+  fontFamily: string;
+  onFontFamilyChange: (font: string) => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
   backspaceEnabled: boolean;
@@ -28,6 +31,7 @@ interface ExamHeaderProps {
   isTestActive: boolean;
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  onManualFullscreenToggle: () => void;
   testTitle?: string;
 }
 
@@ -35,6 +39,8 @@ export default function ExamHeader({
   timeLeftSeconds,
   fontSize,
   onFontSizeChange,
+  fontFamily,
+  onFontFamilyChange,
   soundEnabled,
   onToggleSound,
   backspaceEnabled,
@@ -44,6 +50,7 @@ export default function ExamHeader({
   isTestActive,
   darkMode,
   onToggleDarkMode,
+  onManualFullscreenToggle,
   testTitle = 'RRB NTPC Typing Test',
 }: ExamHeaderProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,6 +62,7 @@ export default function ExamHeader({
   }, []);
 
   const toggleFullscreen = async () => {
+    onManualFullscreenToggle();
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
@@ -79,25 +87,27 @@ export default function ExamHeader({
             <Link href="/" className="exam-exit" title="Return to test catalog" aria-label="Return to test catalog">
               <ArrowLeft className="w-4 h-4" />
             </Link>
+            <span className="exam-brand-mark" aria-hidden="true"><Keyboard className="w-5 h-5" /></span>
             <div className="exam-identity-copy">
-              <div className="exam-kicker"><span>RRB NTPC</span><i>CBTST</i><span>ENGLISH</span></div>
+              <div className="exam-brand-name">RRB NTPC</div>
               <h1 title={testTitle}>{testTitle}</h1>
             </div>
           </div>
 
           <div className="exam-controls" aria-label="Test controls">
-            <label className="exam-control exam-font-control" title="Adjust passage and typing text size">
+            <label className="exam-control exam-font-select-control" title="Choose passage and typing font">
               <Type className="w-4 h-4" />
-              <input
-                type="range"
-                min="14"
-                max="26"
-                value={fontSize}
-                onChange={(event) => onFontSizeChange(Number(event.target.value))}
-                aria-label="Text size"
-              />
-              <span>{fontSize}px</span>
+              <select value={fontFamily} onChange={(event) => onFontFamilyChange(event.target.value)} aria-label="Font style">
+                <option value="tcs">TCS iON (Times New Roman)</option>
+                <option value="arial">Arial</option>
+                <option value="georgia">Georgia</option>
+              </select>
             </label>
+            <div className="exam-control exam-font-control" role="group" aria-label="Text size">
+              <button type="button" onClick={() => onFontSizeChange(Math.max(14, fontSize - 1))} disabled={fontSize <= 14} aria-label="Decrease text size" title="Decrease text size">A−</button>
+              <span>{fontSize}px</span>
+              <button type="button" onClick={() => onFontSizeChange(Math.min(26, fontSize + 1))} disabled={fontSize >= 26} aria-label="Increase text size" title="Increase text size">A+</button>
+            </div>
 
             <label className="exam-control exam-duration-control" title="Choose test duration">
               <Clock className="w-4 h-4" />

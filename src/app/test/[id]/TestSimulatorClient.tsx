@@ -27,6 +27,8 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
 
   // Settings
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [fontFamily, setFontFamily] = useState('tcs');
+  const [autoFullscreen, setAutoFullscreen] = useState(true);
 
   // Test State
   const [typedText, setTypedText] = useState('');
@@ -238,6 +240,8 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
         timeLeftSeconds={timeLeftSeconds}
         fontSize={settings.fontSize}
         onFontSizeChange={handleFontSizeChange}
+        fontFamily={fontFamily}
+        onFontFamilyChange={setFontFamily}
         soundEnabled={settings.soundEnabled}
         onToggleSound={handleToggleSound}
         backspaceEnabled={settings.backspaceEnabled}
@@ -247,6 +251,7 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
         isTestActive={isTestActive}
         darkMode={settings.darkMode}
         onToggleDarkMode={handleToggleDarkMode}
+        onManualFullscreenToggle={() => setAutoFullscreen(false)}
         testTitle={passage.title}
       />
 
@@ -271,6 +276,9 @@ export default function TestSimulatorClient({ passageId }: TestSimulatorClientPr
             onSubmitTest={finishTest}
             onCancelTest={handleCancelTest}
             fontSize={settings.fontSize}
+            fontFamily={fontFamily}
+            autoFullscreen={autoFullscreen}
+            onAutoFullscreenStarted={() => setAutoFullscreen(false)}
           />
         )}
       </main>

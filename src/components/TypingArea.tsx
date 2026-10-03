@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { soundController } from '../lib/sound';
 import { Passage } from '../lib/passages';
-import { AlertCircle, CheckCircle2, RotateCcw, XCircle, Layers } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 interface TypingAreaProps {
   passage: Passage;
@@ -17,6 +17,9 @@ interface TypingAreaProps {
   onSubmitTest: () => void;
   onCancelTest: () => void;
   fontSize: number;
+  fontFamily: string;
+  autoFullscreen: boolean;
+  onAutoFullscreenStarted: () => void;
 }
 
 export default function TypingArea({
@@ -31,7 +34,15 @@ export default function TypingArea({
   onSubmitTest,
   onCancelTest,
   fontSize,
+  fontFamily,
+  autoFullscreen,
+  onAutoFullscreenStarted,
 }: TypingAreaProps) {
+  const selectedFont = fontFamily === 'arial'
+    ? 'Arial, Helvetica, sans-serif'
+    : fontFamily === 'georgia'
+      ? 'Georgia, "Times New Roman", serif'
+      : '"Times New Roman", Times, serif';
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const passageRef = useRef<HTMLDivElement>(null);
   const [backspaceWarning, setBackspaceWarning] = useState(false);
@@ -76,10 +87,15 @@ export default function TypingArea({
     onTypedTextChange(e.target.value);
   };
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    e.preventDefault();
-    alert('Pasting text is disabled in RRB NTPC typing test.');
-  }, []);
+  const handleTypingAreaClick = async () => {
+    if (!autoFullscreen || document.fullscreenElement) return;
+    onAutoFullscreenStarted();
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {
+      // Fullscreen may be unavailable in restricted browser contexts.
+    }
+  };
 
   // Compute live indicators
   const typedKeystrokes = typedText.length;
@@ -89,113 +105,105 @@ export default function TypingArea({
   const currentLap = isRetyping ? Math.floor(typedKeystrokes / passageKeystrokes) + 1 : 1;
 
   return (
-    <div className="typing-workspace flex flex-col space-y-3 max-w-[1440px] mx-auto px-3 sm:px-5 py-3 sm:py-4">
-      {/* Top Box: Original Passage */}
-      <section className="exam-panel reading-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-colors" aria-label="Original passage">
-        <div className="exam-panel-heading bg-slate-50 dark:bg-slate-800/60 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-            <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
-              Original Passage
-            </span>
-            <span className="exam-panel-tag">READ ONLY</span>
-          </div>
+    <div className="typing-workspace">
+      <div className="exam-layout">
+        <main className="exam-left-column">
+          <section className="exam-panel reading-panel" aria-label="Original passage">
+            <div className="exam-panel-heading">
+              <span className="font-semibold">Passage</span>
+              <div className="exam-passage-stats">
+                <span><strong>{passage.wordCount}</strong> words</span>
+                <span><strong>{passageKeystrokes}</strong> characters</span>
+              </div>
+            </div>
+            <div
+              ref={passageRef}
+              onCopy={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ fontSize: `${fontSize}px`, fontFamily: selectedFont }}
+              className="exam-passage-text"
+            >
+              {passage.text}
+            </div>
+          </section>
 
-          <div className="exam-passage-stats text-xs text-slate-500 dark:text-slate-400">
-            <span><strong>{passage.wordCount}</strong> words</span>
-            <span><strong>{passageKeystrokes}</strong> characters</span>
-          </div>
-        </div>
-
-        <div
-          ref={passageRef}
-          onCopy={(e) => e.preventDefault()}
-          onContextMenu={(e) => e.preventDefault()}
-          style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
-          className="exam-passage-text p-5 h-60 sm:h-64 overflow-y-auto font-sans text-slate-800 dark:text-slate-200 select-none bg-slate-50/40 dark:bg-slate-950/30 whitespace-pre-wrap tracking-wide"
-        >
-          {passage.text}
-        </div>
-      </section>
-
-      {/* Retyping alert banner if candidate loops passage */}
-      {isRetyping && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs">
-          <Layers className="w-4 h-4 text-indigo-500" />
-          <span>
-            Passage completed! You are now typing <strong>Lap #{currentLap}</strong> (Continuous retyping expands your 5% mistake forgiveness buffer).
-          </span>
-        </div>
-      )}
-
-      {/* Bottom Box: Candidate Typing Area */}
-      <section className="exam-panel response-panel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-colors relative" aria-label="Typing response">
-        <div className="exam-panel-heading typing-panel-heading bg-slate-50 dark:bg-slate-800/60 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isTestActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-            <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 shrink-0">
-              Your Response
-            </span>
-            <span className="typing-ready-note text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              {isTestActive ? 'Test in progress' : 'Ready · timer starts on your first keystroke'}
-            </span>
-          </div>
-
-          <div className="typing-live-stats text-[11px]">
-            <span>Keys <strong>{typedKeystrokes}</strong></span>
-            <span>Words <strong>{liveWords}</strong></span>
-            <span>Bksp <strong className={backspaceCount > 0 ? 'has-backspaces' : ''}>{backspaceCount}</strong></span>
-          </div>
-        </div>
-
-        <div className="relative">
-          <textarea
-            ref={textareaRef}
-            value={typedText}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoComplete="off"
-            autoCorrect="off"
-            style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
-            placeholder="Type the passage here. The timer begins with your first keystroke."
-            className="exam-response-input w-full h-40 sm:h-44 p-5 font-sans outline-none resize-none bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 tracking-wide border-0 focus:ring-0"
-          />
-
-          {/* Floating warning when candidate hits backspace while disabled */}
-          {backspaceWarning && (
-            <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 animate-bounce">
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>Backspace is Disabled in TCS Exam Mode</span>
+          {isRetyping && (
+            <div className="exam-lap-note" role="status">
+              Passage retyping · Lap #{currentLap}
             </div>
           )}
-        </div>
 
-        {/* Footer Action Buttons */}
-        <div className="exam-panel-footer px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onCancelTest}
-            className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-900 transition-colors"
-          >
-            <XCircle className="w-4 h-4" />
-              <span>Cancel Attempt</span>
-          </button>
+          <section className="exam-panel response-panel" aria-label="Typing response">
+            <div className="exam-input-status">
+              <span className="typing-ready-note">{isTestActive ? 'Test in progress' : 'Ready'}</span>
+              <div className="typing-live-stats">
+                <span>Keys <strong>{typedKeystrokes}</strong></span>
+                <span>Words <strong>{liveWords}</strong></span>
+                <span>Bksp <strong className={backspaceCount > 0 ? 'has-backspaces' : ''}>{backspaceCount}</strong></span>
+              </div>
+            </div>
 
-          <div className="flex items-center space-x-3">
-            <button
-              type="button"
-              onClick={onSubmitTest}
-              className="flex items-center space-x-2 px-6 py-2.5 rounded-lg text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Submit Test</span>
-            </button>
+            <div className="relative">
+              <textarea
+                ref={textareaRef}
+                onClick={handleTypingAreaClick}
+                value={typedText}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+                style={{ fontSize: `${fontSize}px`, fontFamily: selectedFont }}
+                placeholder="Start typing the passage here…"
+                className="exam-response-input"
+                aria-label="Type the passage"
+              />
+
+              {backspaceWarning && (
+                <div className="exam-backspace-warning">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Backspace is disabled in this test.</span>
+                </div>
+              )}
+            </div>
+          </section>
+        </main>
+
+        <aside className="exam-candidate-panel" aria-label="Candidate information">
+          <div className="exam-candidate-profile">
+            <img
+              src="https://g26.tcsion.com//OnlineAssessment/images/NewCandidateImage.jpg"
+              alt="Candidate"
+              className="exam-candidate-photo"
+            />
+            <strong>Candidate</strong>
           </div>
-        </div>
-      </section>
+          <div className="exam-candidate-context">
+            You are viewing <strong>English Typing Practice</strong>
+          </div>
+          <div className="exam-candidate-instructions">
+            <strong>Instructions</strong>
+            <ul>
+              <li>Type the passage shown on the left.</li>
+              <li>{backspaceEnabled ? 'Backspace is enabled.' : 'Backspace is disabled for this attempt.'}</li>
+              <li className="rounded-r border-l-2 border-amber-500 bg-amber-50 px-2 py-1 font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                For testing only: pasting and arrow keys are allowed.
+              </li>
+              <li>The test submits automatically when time runs out.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <div className="exam-action-bar">
+        <button type="button" onClick={onCancelTest} className="exam-cancel-button">
+          <XCircle className="w-4 h-4" /><span>Cancel</span>
+        </button>
+        <button type="button" onClick={onSubmitTest} className="exam-submit-button">
+          <CheckCircle2 className="w-4 h-4" /><span>Submit Test</span>
+        </button>
+      </div>
     </div>
   );
 }
