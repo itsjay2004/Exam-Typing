@@ -1,432 +1,106 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import {
-  getAllPassages,
-  deleteCustomPassage,
-  DEFAULT_PASSAGES,
-  Passage,
-} from '../lib/passages';
-import {
-  getTestHistory,
-  getPassageStatsMap,
-  PassageAttemptStat,
-  TestAttempt,
-} from '../lib/storage';
-import ResultModal from '../components/ResultModal';
-import {
-  CheckCircle2,
-  XCircle,
-  Play,
-  RotateCcw,
-  Eye,
-  Search,
-  BarChart2,
-  BookOpen,
-  Sparkles,
-  Trash2,
-  Award,
-  Activity,
-} from 'lucide-react';
 import Link from 'next/link';
+import { ArrowRight, Award, BarChart3, Check, Clock3, Keyboard, ShieldCheck, Sparkles, Target, Zap, ExternalLink } from 'lucide-react';
+
+const benefits = [
+  { icon: Target, title: 'Practice with a purpose', text: 'Work through English passages in a focused RRB NTPC CBTST practice session.' },
+  { icon: BarChart3, title: 'Understand each score', text: 'Review net WPM, gross WPM, accuracy, and the mistakes behind your result.' },
+  { icon: Clock3, title: 'Build timed-test routine', text: 'Use timed sessions to build steady pace and accuracy under a clock.' },
+  { icon: ShieldCheck, title: 'Keep track of practice', text: 'Your attempts and progress stay in this browser, with no account required.' },
+];
+
+const comparison = [
+  { name: 'KeySprint (placeholder)', href: null, summary: 'A focused browser-based practice tool for RRB NTPC English CBTST, with a transparent scoring breakdown and local attempt history.' },
+  { name: 'Soni Typing Tutor', href: 'https://www.sonitypingtutor.com/', summary: 'Downloadable typing tutor covering English, Hindi, Marathi, and Punjabi, with a large exercise and test library.' },
+  { name: 'TypingWale', href: 'https://www.typingwale.com/exams/rrb-ntpc-typing-test', summary: 'A broad government-exam platform spanning 36+ exam variants and three languages; it describes exam-specific interfaces and scoring.' },
+  { name: 'AdityaTyping', href: 'https://www.adityatyping.online/tests/rrb-ntpc-typing-test/', summary: 'Lists 100 RRB NTPC tests, English and Hindi options, plus custom practice.' },
+  { name: 'EzTyping', href: 'https://eztyping.com/category/rrb-ntpc-typing-test/', summary: 'Offers an RRB NTPC practice category within a wider government-exam typing platform.' },
+];
 
 export default function HomePage() {
-  const [passages, setPassages] = useState<Passage[]>(DEFAULT_PASSAGES);
-  const [statsMap, setStatsMap] = useState<Record<string, PassageAttemptStat>>({});
-  const [attempts, setAttempts] = useState<TestAttempt[]>([]);
-  const [filterType, setFilterType] = useState<'all' | 'attempted' | 'unattempted'>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
-  const [previewAttempt, setPreviewAttempt] = useState<TestAttempt | null>(null);
-
-  const loadData = () => {
-    const loadedPassages = getAllPassages();
-    const history = getTestHistory();
-    setPassages(loadedPassages);
-    setAttempts(history);
-    setStatsMap(getPassageStatsMap());
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const handleDeleteCustom = (id: string) => {
-    if (confirm('Delete this custom passage?')) {
-      deleteCustomPassage(id);
-      loadData();
-    }
-  };
-
-  // Compute aggregate numbers
-  const totalPassages = passages.length;
-  const attemptedCount = Object.keys(statsMap).filter((id) => passages.some((passage) => passage.id === id)).length;
-  const unattemptedCount = Math.max(0, totalPassages - attemptedCount);
-  const passedAttempts = attempts.filter((attempt) => attempt.result.isPass).length;
-  const failedAttempts = attempts.length - passedAttempts;
-  const recentAttempts = attempts.slice(0, 25);
-  const recentAverageNetWpm = recentAttempts.length
-    ? (recentAttempts.reduce((total, attempt) => total + attempt.result.netWpm, 0) / recentAttempts.length).toFixed(1)
-    : null;
-  const recentAverageAccuracy = recentAttempts.length
-    ? (recentAttempts.reduce((total, attempt) => total + attempt.result.accuracy, 0) / recentAttempts.length).toFixed(1)
-    : null;
-  const bestAttempt = attempts.reduce<TestAttempt | null>(
-    (best, attempt) => (!best || attempt.result.netWpm > best.result.netWpm ? attempt : best),
-    null,
-  );
-  const bestNetWpm = bestAttempt?.result.netWpm.toFixed(1) ?? null;
-  const bestAccuracy = bestAttempt?.result.accuracy.toFixed(1) ?? null;
-
-  // Filter passages
-  const filteredPassages = passages.filter((p) => {
-    const stat = statsMap[p.id];
-    const isAttempted = Boolean(stat);
-
-    if (filterType === 'attempted' && !isAttempted) return false;
-    if (filterType === 'unattempted' && isAttempted) return false;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = p.title.toLowerCase().includes(q);
-      const matchText = p.text.toLowerCase().includes(q);
-      if (!matchTitle && !matchText) return false;
-    }
-
-    return true;
-  });
-
   return (
-    <main className="home-page min-h-screen bg-slate-100/60 dark:bg-slate-950 transition-colors pb-16">
-      {/* Hero Welcome & Quick Stats Banner */}
-      <div className="home-banner bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="home-banner-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="home-intro flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="home-kicker inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                <span>Railway Recruitment Board (RRB NTPC) Skill Test</span>
-              </div>
-              <h1 className="home-title text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Your next best <span className="text-emerald-700">practice</span> starts here.
-              </h1>
-              <p className="home-description text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                Build exam day confidence with focused RRB NTPC typing drills, instant feedback, and progress that stays yours.
-              </p>
+    <main className="marketing-page">
+      <section className="marketing-hero">
+        <div className="marketing-container hero-grid">
+          <div className="hero-copy">
+            <div className="marketing-eyebrow"><span className="eyebrow-dot" /> INDEPENDENT RRB NTPC CBTST PRACTICE</div>
+            <h1>Prepare for the test with a score you can <em>understand.</em></h1>
+            <p className="hero-description">Practice English typing in a clear, exam-style screen. See how your net WPM is calculated, review your errors, and use each attempt to guide the next one.</p>
+            <div className="hero-actions">
+              <Link href="/practice" className="button-primary">Start practicing <ArrowRight size={17} /></Link>
+              <Link href="#how-it-works" className="button-secondary">See how it works</Link>
             </div>
-
-            {/* Quick Action */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Link
-                href="/history"
-                className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors"
-              >
-                <BarChart2 className="w-4 h-4 text-blue-600" />
-                <span>Full Analytics</span>
-              </Link>
-            </div>
+            <div className="hero-trust"><span><Check size={15} /> NTPC-focused English practice</span><span><Check size={15} /> No account needed</span></div>
           </div>
-
-          {/* Practice and performance snapshot */}
-          <div className="home-stats grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-            <div className="home-stat-card">
-              <div className="home-stat-heading">
-                <div className="home-stat-icon blue"><BookOpen className="w-4 h-4" /></div>
-                <span className="home-stat-label">Passage coverage</span>
-              </div>
-              <span className="home-stat-value">{totalPassages} <small>sets</small></span>
-              <div className="home-stat-detail"><span>{attemptedCount} attempted</span><span>{unattemptedCount} to go</span></div>
-              <div className="home-stat-track" aria-label={`${attemptedCount} of ${totalPassages} passages attempted`}>
-                <span style={{ width: `${totalPassages ? (attemptedCount / totalPassages) * 100 : 0}%` }} />
-              </div>
+          <div className="hero-visual" aria-label="Typing practice result preview">
+            <div className="visual-orbit orbit-one" /><div className="visual-orbit orbit-two" />
+            <div className="practice-card">
+              <div className="practice-card-top"><span className="practice-brand"><Keyboard size={16} /> CBTST PRACTICE</span><span className="live-pill"><i /> PRACTICE</span></div>
+              <div className="practice-title">Illustrative result preview</div>
+              <div className="practice-passage">The progress of a nation depends on the dedication, discipline and hard work of its people. Every opportunity to learn helps build a stronger future.</div>
+              <div className="practice-divider" />
+              <div className="practice-metrics"><div><strong>32.4</strong><span>NET WPM</span></div><div><strong>96<span>%</span></strong><span>ACCURACY</span></div><div><strong>08:42</strong><span>TIME LEFT</span></div></div>
+              <div className="practice-progress"><span /></div>
+              <div className="practice-card-footer"><span><Sparkles size={14} /> Example only</span><span>Review every attempt</span></div>
             </div>
-
-            <div className="home-stat-card">
-              <div className="home-stat-heading">
-                <div className="home-stat-icon green"><CheckCircle2 className="w-4 h-4" /></div>
-                <span className="home-stat-label">Test outcomes</span>
-              </div>
-              <div className="home-stat-pair">
-                <span className="pass">{passedAttempts}<small> passed</small></span>
-                <span className="fail">{failedAttempts}<small> failed</small></span>
-              </div>
-              <span className="home-stat-note">{attempts.length} total {attempts.length === 1 ? 'attempt' : 'attempts'}</span>
-            </div>
-
-            <div className="home-stat-card">
-              <div className="home-stat-heading">
-                <div className="home-stat-icon violet"><Activity className="w-4 h-4" /></div>
-                <span className="home-stat-label">Recent average</span>
-              </div>
-              <span className="home-stat-value">{recentAverageNetWpm ?? '—'} <small>{recentAverageNetWpm ? 'net WPM' : 'no tests yet'}</small></span>
-              <div className="home-stat-secondary">
-                <span>Avg accuracy</span>
-                <strong>{recentAverageAccuracy ? `${recentAverageAccuracy}%` : '—'}</strong>
-              </div>
-              <span className="home-stat-note">{recentAttempts.length ? `Across last ${recentAttempts.length} ${recentAttempts.length === 1 ? 'test' : 'tests'}` : 'Complete a test to start tracking'}</span>
-            </div>
-
-            <div className="home-stat-card">
-              <div className="home-stat-heading">
-                <div className="home-stat-icon amber"><Award className="w-4 h-4" /></div>
-                <span className="home-stat-label">Personal best</span>
-              </div>
-              <span className="home-stat-value">{bestNetWpm ?? '—'} <small>{bestNetWpm ? 'net WPM' : 'no record yet'}</small></span>
-              <div className="home-stat-secondary">
-                <span>Accuracy on best run</span>
-                <strong>{bestAccuracy ? `${bestAccuracy}%` : '—'}</strong>
-              </div>
-              <span className="home-stat-note">Qualifying target: 30 net WPM</span>
-            </div>
+            <div className="floating-note"><span className="note-icon"><Award size={17} /></span><span><b>Build consistency</b><small>One session at a time</small></span></div>
+            <div className="hero-stamp"><span>RRB</span><small>NTPC<br/>READY</small></div>
           </div>
         </div>
-      </div>
+        <div className="hero-bottom"><div className="marketing-container hero-bottom-inner"><span>ONE EXAM · CLEAR PRACTICE</span><div><span>RRB NTPC</span><i /> <span>CBTST FORMAT</span><i /> <span>ENGLISH TYPING</span></div></div></div>
+      </section>
 
-      <div className="home-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Search and progress filters */}
-        <div className="home-toolbar bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Status Filter Tabs */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setFilterType('all')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  filterType === 'all'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                All Tests ({totalPassages})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterType('attempted')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  filterType === 'attempted'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                Attempted ({attemptedCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterType('unattempted')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  filterType === 'unattempted'
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                Unattempted ({unattemptedCount})
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Search test sets..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none shadow-xs"
-              />
-            </div>
+      <section className="ntpc-overview-section" id="ntpc-overview">
+        <div className="marketing-container ntpc-overview-card">
+          <div className="ntpc-overview-copy">
+            <div className="section-label">The exam, at a glance</div>
+            <h2>RRB NTPC <em>CBTST</em></h2>
+            <p>The Computer Based Typing Skill Test is qualifying in nature. This practice tool currently focuses on the English typing option and its published speed and error-scoring rules.</p>
+            <a className="official-rules-link" href="https://www.rrbcdg.gov.in/uploads/2024/06-NTPCUG/062024NTPCUG-CBTST_Instructions.pdf" target="_blank" rel="noreferrer">Read the RRB instructions <ExternalLink size={14} /></a>
           </div>
+          <div className="ntpc-facts">
+            <div><strong>30 WPM</strong><span>English qualifying speed</span></div>
+            <div><strong>10 min</strong><span>Evaluated typing time</span></div>
+            <div><strong>300 words</strong><span>Minimum words typed in English</span></div>
+            <div><strong>5% buffer</strong><span>Allowed before deductions</span></div>
+          </div>
+          <div className="ntpc-rule-note"><Check size={16} /><span>For practice scoring, half mistakes count as 0.5; mistakes beyond the 5% allowance deduct 10 words each from the net-speed calculation.</span></div>
+          <div className="ntpc-card-action"><span>See how your own attempt measures up.</span><Link href="/practice" className="button-primary">Go to NTPC practice <ArrowRight size={16} /></Link></div>
+          <p className="ntpc-disclaimer">Independent practice only. This is not an official RRB or TCS iON service; current recruitment notices take precedence.</p>
         </div>
+      </section>
 
-        {/* Test Cards Grid */}
-        {filteredPassages.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center shadow-xs">
-            <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-            <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm">No test sets match your search</h3>
-            <p className="text-xs text-slate-400 mt-1">Try another passage title or search term.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredPassages.map((p) => {
-              const stat = statsMap[p.id];
-              const isAttempted = Boolean(stat);
-              const latestResult = stat?.latest.result;
-              const isPass = latestResult?.isPass ?? false;
+      <section className="section-intro marketing-container" id="how-it-works">
+        <div className="section-label">A clearer way to prepare</div><h2>Practice. Review. <em>Improve.</em></h2>
+        <p>Each session ends with a transparent breakdown of speed, accuracy, and the mistakes that affected your score.</p>
+      </section>
 
-              return (
-                <div
-                  key={p.id}
-                  className={`passage-card bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
-                    isAttempted
-                      ? isPass
-                        ? 'is-pass border-emerald-500/30'
-                        : 'is-fail border-rose-500/30'
-                      : 'is-new border-slate-200 dark:border-slate-800'
-                  }`}
-                >
-                  <div>
-                    {/* Card Header Status */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      {isAttempted ? (
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
-                              isPass
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                            }`}
-                          >
-                            {isPass ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                            {isPass ? 'PASS' : 'FAIL'}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {stat.count}x
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                          Unattempted
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="passage-title font-bold text-[15px] text-slate-900 dark:text-white leading-snug mb-1.5">
-                      {p.title}
-                    </h3>
-                    <span className="text-[11px] text-slate-500 font-mono block mb-3">
-                      {p.wordCount} words • Standard 10 Min Set
-                    </span>
-
-                    {/* Attempted Card: Detailed Performance Summary Box */}
-                    {isAttempted && latestResult ? (
-                      <div className="my-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-                        <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
-                          <span className="text-xs text-slate-500 font-medium">Net Typing Speed</span>
-                          <span
-                            className={`text-lg font-extrabold font-mono ${
-                              isPass ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                            }`}
-                          >
-                            {latestResult.netWpm}{' '}
-                            <span className="text-xs font-normal text-slate-400">WPM</span>
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-0.5">
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">Accuracy:</span>
-                            <strong className="font-mono text-emerald-600 dark:text-emerald-400">{latestResult.accuracy}%</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">Gross WPM:</span>
-                            <strong className="font-mono text-blue-600 dark:text-blue-400">{latestResult.grossWpm}</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">Mistakes:</span>
-                            <strong className="font-mono text-rose-600 dark:text-rose-400">{latestResult.totalMistakes.toFixed(1)}</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">Typed Words:</span>
-                            <strong className="font-mono text-slate-700 dark:text-slate-300">{latestResult.totalWordsTyped}</strong>
-                          </div>
-                        </div>
-
-                        <div className="text-[10px] text-slate-400 text-right pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
-                          Last taken: {stat.latest.dateFormatted}
-                        </div>
-                      </div>
-                    ) : (
-                      /* Unattempted Card: Passage Text Preview */
-                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed my-3 bg-slate-50 dark:bg-slate-800/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/60 font-sans">
-                        {p.text}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Footer Buttons */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    {p.isCustom && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCustom(p.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
-                        title="Delete custom passage"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-
-                    <div className="flex items-center space-x-2 ml-auto">
-                      {isAttempted && stat && (
-                        <button
-                          type="button"
-                          onClick={() => setPreviewAttempt(stat.latest)}
-                          className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                          title="View last test breakdown"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Last Result</span>
-                        </button>
-                      )}
-
-                      <Link
-                        href={`/test/${p.id}`}
-                        className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-xs transition-all ${
-                          isAttempted
-                            ? 'bg-blue-600 hover:bg-blue-700'
-                            : 'bg-emerald-600 hover:bg-emerald-700'
-                        }`}
-                      >
-                        {isAttempted ? (
-                          <>
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Re-attempt</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-3.5 h-3.5" />
-                            <span>Attempt Test</span>
-                          </>
-                        )}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Modal: View Previous Result */}
-      {previewAttempt && (
-        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/60 backdrop-blur-sm">
-          <div className="min-h-full flex items-start justify-center px-3 py-4 sm:px-6 sm:py-6">
-            <div className="max-w-5xl w-full relative" role="dialog" aria-modal="true" aria-label="Previous test result">
-              <button
-                type="button"
-                onClick={() => setPreviewAttempt(null)}
-                className="fixed top-3 right-3 z-[60] p-2 rounded-full bg-slate-800 text-white hover:bg-slate-700 transition-colors shadow-lg"
-                aria-label="Close result"
-              >
-                <XCircle className="w-6 h-6" />
-              </button>
-              <ResultModal
-                result={previewAttempt.result}
-                onRetake={() => {
-                  const passageId = previewAttempt.passageId;
-                  setPreviewAttempt(null);
-                  window.location.href = `/test/${passageId}`;
-                }}
-                onNextTest={() => {
-                  setPreviewAttempt(null);
-                  window.location.href = `/test/${passages[0].id}`;
-                }}
-              />
-            </div>
-          </div>
+      <section className="comparison-section" id="compare">
+        <div className="marketing-container">
+          <div className="section-intro comparison-intro"><div className="section-label">Compare practice options</div><h2>Different tools suit <em>different routines.</em></h2><p>Some platforms cover many exams or languages. KeySprint is designed around one use case: RRB NTPC English typing practice.</p></div>
+          <div className="comparison-table-wrap"><table className="comparison-table"><thead><tr><th>Platform</th><th>Publicly listed focus</th></tr></thead><tbody>{comparison.map((item) => <tr key={item.name}><th scope="row">{item.href ? <a href={item.href} target="_blank" rel="noreferrer">{item.name} <ExternalLink size={12} /></a> : <span className="comparison-current">{item.name}</span>}</th><td>{item.summary}</td></tr>)}</tbody></table></div>
+          <p className="comparison-note">Descriptions summarize each provider’s public product pages and may change. They are not independent product reviews; check each provider for current features and plans.</p>
         </div>
-      )}
+      </section>
+
+      <section className="feature-grid marketing-container" id="features">
+        {benefits.map(({ icon: Icon, title, text }, index) => <article className="feature-card" key={title}><div className={`feature-icon tone-${index}`}><Icon size={21} /></div><h3>{title}</h3><p>{text}</p><span className="feature-number">0{index + 1}</span></article>)}
+      </section>
+
+      <section className="exam-section" id="exam">
+        <div className="marketing-container exam-grid"><div><div className="section-label">One goal, focused practice</div><h2>Made for the <em>RRB NTPC</em> typing test.</h2><p>Stay focused on the English typing skill test with practice passages, configurable session duration, and a detailed report when you finish.</p><ul className="check-list"><li><Check size={17} /> Timed typing sessions</li><li><Check size={17} /> Net speed and accuracy feedback</li><li><Check size={17} /> Mistake categories and passage review</li><li><Check size={17} /> Personal practice history on your device</li></ul><Link href="/practice" className="text-link">Explore practice tests <ArrowRight size={16} /></Link></div>
+          <div className="exam-summary"><div className="summary-head"><span className="summary-mark"><Keyboard size={18} /></span><div><b>RRB NTPC CBTST</b><small>English typing practice</small></div><span className="summary-tag">FOCUSED</span></div><div className="summary-body"><div className="summary-row"><span>Practice mode</span><b>Timed session</b></div><div className="summary-row"><span>Result review</span><b>Speed · accuracy · errors</b></div><div className="summary-row"><span>Progress history</span><b>Saved in this browser</b></div></div><div className="summary-note"><Zap size={16} /> Finish a session to get your detailed report.</div></div>
+        </div>
+      </section>
+
+      <section className="pricing-section" id="pricing"><div className="marketing-container">
+        <div className="section-intro pricing-intro"><div className="section-label">Simple early access pricing</div><h2>Pick your practice <em>plan.</em></h2><p>Choose the access period that fits your preparation schedule.</p></div>
+        <div className="pricing-grid">
+          <article className="price-card"><div className="plan-name">1 MONTH</div><div className="price"><span>₹</span>79<small>/ month</small></div><p>For a focused month of regular practice.</p><ul><li><Check size={16}/> RRB NTPC typing practice</li><li><Check size={16}/> Timed sessions and result reports</li><li><Check size={16}/> Practice history on your device</li></ul><Link href="/signup" className="button-price">Choose monthly</Link></article>
+          <article className="price-card featured-price"><div className="popular-badge">BEST VALUE</div><div className="plan-name">3 MONTHS</div><div className="price"><span>₹</span>149<small>/ 3 months</small></div><p>More time to build a consistent routine.</p><ul><li><Check size={16}/> RRB NTPC typing practice</li><li><Check size={16}/> Timed sessions and result reports</li><li><Check size={16}/> Practice history on your device</li></ul><Link href="/signup" className="button-primary price-cta">Choose 3 months <ArrowRight size={16}/></Link><div className="price-footnote">About ₹50 per month</div></article>
+        </div><p className="pricing-note">Plans are displayed for launch planning. Account creation and payment are not available yet.</p>
+      </div></section>
+
+      <section className="final-cta"><div className="marketing-container final-cta-inner"><div><div className="section-label">Your next session starts here</div><h2>Put your practice into motion.</h2><p>Try a typing test and see what your next focused session can teach you.</p></div><Link href="/practice" className="button-light">Start practicing <ArrowRight size={17}/></Link></div></section>
     </main>
   );
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Keyboard, Home as HomeIcon, BarChart2, Sun, Moon } from 'lucide-react';
+import { Keyboard, Home as HomeIcon, BarChart2, Sun, Moon, Sparkles, Tags } from 'lucide-react';
 import { saveStoredSettings } from '../lib/storage';
 
 export default function Navbar() {
@@ -31,7 +31,10 @@ export default function Navbar() {
 
   const navItems = [
     { href: '/', label: 'Home', icon: HomeIcon },
+    { href: '/practice', label: 'Practice', icon: Keyboard },
     { href: '/history', label: 'Progress', icon: BarChart2 },
+    { href: '/#features', label: 'Features', icon: Sparkles },
+    { href: '/#pricing', label: 'Pricing', icon: Tags },
   ];
 
   if (pathname.startsWith('/test/')) return null;
@@ -39,21 +42,22 @@ export default function Navbar() {
   return (
     <nav className="site-nav sticky top-0 z-50 text-slate-900">
       <div className="nav-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 shrink-0 group" aria-label="RRB NTPC Typing Practice home">
+        <Link href="/" className="flex items-center gap-3 shrink-0 group" aria-label="KeySprint home">
           <span className="brand-icon flex items-center justify-center text-white transition-transform group-hover:scale-105">
             <Keyboard className="w-5 h-5" />
           </span>
           <span className="flex flex-col leading-tight">
             <span className="brand-name font-bold tracking-tight text-[15px] text-slate-900 flex items-center gap-1.5">
-              RRB NTPC <span className="text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">CBTST</span>
+              KeySprint <span title="Placeholder brand name" className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">TEMP</span>
             </span>
-            <span className="brand-subtitle text-[10px] text-slate-500 mt-1">Typing practice, built for the exam</span>
+            <span className="brand-subtitle text-[10px] text-slate-500 mt-1">RRB NTPC typing practice</span>
           </span>
         </Link>
 
         <div className="nav-items flex items-center gap-1 sm:gap-1.5">
           {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+            const route = href.split('#')[0];
+            const isActive = pathname === route && (route !== '/' || href === '/');
             return (
               <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
                 className={`nav-link flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${isActive ? 'active' : ''}`}>
@@ -65,6 +69,8 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Link href="/login" className="nav-auth-link">Log in</Link>
+          <Link href="/signup" className="nav-signup-link">Sign up</Link>
           <button type="button" onClick={toggleTheme} className="theme-toggle" aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>

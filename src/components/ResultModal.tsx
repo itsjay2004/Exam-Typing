@@ -494,18 +494,26 @@ export default function ResultModal({
                   const original = token.originalWord ?? '∅';
                   const typed = token.typedWord ?? '— skipped —';
                   const color = reviewColors[token.type];
+                  const pendingStartsHere = token.pending && !result.passageReview[index - 1]?.pending;
 
                   return (
-                    <span key={`${index}-${token.originalWord ?? 'extra'}`} className="inline-flex max-w-full flex-col items-center align-bottom text-center">
-                      {isMistake && (
-                        <span className="mb-0.5 max-w-full break-words rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
-                          {typed}
+                    <React.Fragment key={`${index}-${token.originalWord ?? 'extra'}`}>
+                      {pendingStartsHere && (
+                        <span className="basis-full mt-2 border-t border-dashed border-slate-300 pt-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                          Not evaluated · remaining words in this lap
                         </span>
                       )}
-                      <span className="break-words rounded px-1 py-0.5" style={isMistake ? { backgroundColor: color } : undefined}>
-                        {original}
+                      <span className={`inline-flex max-w-full flex-col items-center align-bottom text-center ${token.pending ? 'text-slate-400 dark:text-slate-500' : ''}`}>
+                        {isMistake && (
+                          <span className="mb-0.5 max-w-full break-words rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
+                            {typed}
+                          </span>
+                        )}
+                        <span className={`break-words rounded px-1 py-0.5 ${token.pending ? 'bg-slate-100 dark:bg-slate-800' : ''}`} style={isMistake ? { backgroundColor: color } : undefined}>
+                          {original}
+                        </span>
                       </span>
-                    </span>
+                    </React.Fragment>
                   );
                 })}
               </div>

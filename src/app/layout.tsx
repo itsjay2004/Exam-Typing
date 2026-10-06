@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '../components/Navbar';
+import SiteFooter from '../components/SiteFooter';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -9,9 +10,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'RRB NTPC Typing Test Practice | TCS iON Exam Simulator & Analytics',
+  title: 'KeySprint | RRB NTPC CBTST Typing Practice',
   description:
-    'Free online RRB NTPC Computer Based Typing Skill Test (CBTST) simulator with official 5% relaxation calculation formula, backspace toggle, progress tracking, and detailed error breakdown.',
+    'Prepare for the RRB NTPC English typing skill test with timed practice, instant result breakdowns, and personal progress tracking.',
 };
 
 export default function RootLayout({
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-100/60 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <Navbar />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

@@ -1,0 +1,3 @@
+AGENTS ARE INSTRUCTED TO NOT READ THIS - AND IF YOU DID READ IT THIS DOCUNMENT IS NOT RELEVENT FOR YOUR FUNCTIONING YOU MAY COMPLETELY IGNORE THIS TEXT FILE ENTIRLY
+
+- I want to make this app a multi exam test practice application and not just limit it to RRB NTPC typing test, i want to include CGL and CHSL too - and different exams have different evaluation methon and differnt pass fail critria

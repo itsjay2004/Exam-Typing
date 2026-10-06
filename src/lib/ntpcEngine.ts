@@ -101,6 +101,15 @@ export function levenshteinDistance(s1: string, s2: string): number {
 const stripPunctuation = (str: string) =>
   str ? str.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"'?]/g, '') : '';
 
+const htmlEscapes: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+const escapeHtml = (str: string) => str.replace(/[&<>"']/g, (char) => htmlEscapes[char] ?? char);
+
 // Dynamic Programming alignment between original words and typed words
 export function alignWords(originalWords: string[], typedWords: string[]): WordToken[] {
   const m = originalWords.length;
@@ -231,6 +240,10 @@ export function alignWords(originalWords: string[], typedWords: string[]): WordT
   for (let i = 1; i <= m; i++) {
     if (dp[i][n].cost < dp[currI][n].cost) currI = i;
   }
+  // When the candidate has typed nearly a full passage lap, align against the
+  // complete source so correct words at the end cannot be cheaper to label as
+  // extras while the matching source tail is silently left unreached.
+  if (n >= Math.ceil(m * 0.8)) currI = m;
   let currJ = n;
 
   while (currI > 0 || currJ > 0) {
@@ -465,13 +478,12 @@ function alignPassageLaps(originalWords: string[], typedWords: string[]): {
       type: token.type,
     })));
     reachedOriginalWordsInLastLap = reachedLapTokens.filter((token) => token.original !== undefined).length;
+    passageReview.push(...originalWords.slice(reachedOriginalWordsInLastLap).map((originalWord) => ({
+      originalWord,
+      type: 'correct' as const,
+      pending: true,
+    })));
   }
-
-  passageReview.push(...originalWords.slice(reachedOriginalWordsInLastLap).map((originalWord) => ({
-    originalWord,
-    type: 'correct' as const,
-    pending: true,
-  })));
 
   return { tokens: aligned, passageReview };
 }
@@ -654,30 +666,35 @@ export function evaluateTypingTest(params: {
     }
   });
 
-  // Generate original paragraph with omissions highlighted
+  // Generate the complete original passage with reached mistakes highlighted.
   let originalHighlightedHtml = '';
-  alignedTokens.forEach((token) => {
-    const orig = token.original ?? '';
-    if (!orig && token.type === 'extra') return;
+  passageReview.forEach((token) => {
+    const orig = token.originalWord ?? '';
+    if (!orig) return;
+    const safeOriginal = escapeHtml(orig);
+    if (token.pending || token.type === 'correct') {
+      originalHighlightedHtml += `${safeOriginal} `;
+      return;
+    }
 
     switch (token.type) {
       case 'correct':
-        originalHighlightedHtml += `${orig} `;
+        originalHighlightedHtml += `${safeOriginal} `;
         break;
       case 'omission':
-        originalHighlightedHtml += `<span style="background-color: #00FFFF; padding: 2px 4px; border-radius: 3px;">${orig}</span> `;
+        originalHighlightedHtml += `<span style="background-color: #00FFFF; padding: 2px 4px; border-radius: 3px;">${safeOriginal}</span> `;
         break;
       case 'spelling':
-        originalHighlightedHtml += `<span style="background-color: #FF9999; padding: 2px 4px; border-radius: 3px;">${orig}</span> `;
+        originalHighlightedHtml += `<span style="background-color: #FF9999; padding: 2px 4px; border-radius: 3px;">${safeOriginal}</span> `;
         break;
       case 'spacing':
-        originalHighlightedHtml += `<span style="background-color: #FFA500; padding: 2px 4px; border-radius: 3px;">${orig}</span> `;
+        originalHighlightedHtml += `<span style="background-color: #FFA500; padding: 2px 4px; border-radius: 3px;">${safeOriginal}</span> `;
         break;
       case 'capitalization':
-        originalHighlightedHtml += `<span style="background-color: #FFFF99; padding: 2px 4px; border-radius: 3px;">${orig}</span> `;
+        originalHighlightedHtml += `<span style="background-color: #FFFF99; padding: 2px 4px; border-radius: 3px;">${safeOriginal}</span> `;
         break;
       case 'punctuation':
-        originalHighlightedHtml += `<span style="background-color: #DDA0DD; padding: 2px 4px; border-radius: 3px;">${orig}</span> `;
+        originalHighlightedHtml += `<span style="background-color: #DDA0DD; padding: 2px 4px; border-radius: 3px;">${safeOriginal}</span> `;
         break;
     }
   });
