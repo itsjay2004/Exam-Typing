@@ -678,9 +678,6 @@ export function evaluateTypingTest(params: {
     }
 
     switch (token.type) {
-      case 'correct':
-        originalHighlightedHtml += `${safeOriginal} `;
-        break;
       case 'omission':
         originalHighlightedHtml += `<span style="background-color: #00FFFF; padding: 2px 4px; border-radius: 3px;">${safeOriginal}</span> `;
         break;
